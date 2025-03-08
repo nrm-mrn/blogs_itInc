@@ -176,4 +176,11 @@ describe('posts routes tests', () => {
     expect(updatedNumberPosts.length).toBe(0)
   })
 
+  it('should clear all blogs and posts', async () => {
+    await req.delete('/testing/all-data').expect(204)
+
+    expect(db.blogs.length).toBe(0)
+    expect(db.posts.length).toBe(0)
+  })
+
 })

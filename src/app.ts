@@ -2,10 +2,12 @@ import express, { Request, Response } from 'express'
 import { blogsRouter } from './routes/blogs';
 import { postsRouter } from './routes/posts';
 import { setDb } from './db/db';
+import cors from 'cors'
 
 export const app = express()
 
 app.use(express.json());
+app.use(cors())
 app.use('/blogs', blogsRouter);
 app.use('/posts', postsRouter);
 
