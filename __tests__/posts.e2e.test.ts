@@ -181,6 +181,7 @@ describe('posts routes tests', () => {
 
     expect(db.blogs.length).toBe(0)
     expect(db.posts.length).toBe(0)
+
   })
 
 })

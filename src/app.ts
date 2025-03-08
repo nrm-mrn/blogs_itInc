@@ -11,6 +11,8 @@ app.use(cors())
 app.use('/blogs', blogsRouter);
 app.use('/posts', postsRouter);
 
+setDb();
+
 app.delete('/testing/all-data', async (req: Request, res: Response) => {
   setDb();
   res.sendStatus(204);
