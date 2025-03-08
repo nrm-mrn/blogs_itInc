@@ -12,7 +12,7 @@ app.use('/blogs', blogsRouter);
 app.use('/posts', postsRouter);
 
 app.delete('/testing/all-data', async (req: Request, res: Response) => {
-  await setDb();
+  setDb();
   res.sendStatus(204);
 })
 
