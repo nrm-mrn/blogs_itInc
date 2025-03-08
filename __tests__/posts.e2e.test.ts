@@ -36,7 +36,7 @@ describe('posts routes tests', () => {
     expect(res.body.length).toBe(0);
   })
 
-  it('should get 404, wrong blogid', async () => {
+  it('Should get apiError wrong blogId', async () => {
     const post: PostInputModel = {
       title: 'some title',
       shortDescription: 'short desc',
@@ -47,6 +47,8 @@ describe('posts routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(post)
       .expect(400)
+    console.log(res.body)
+    expect(res.body.errorsMessages[0].field).toEqual('blogId')
   })
 
   it('should create post', async () => {

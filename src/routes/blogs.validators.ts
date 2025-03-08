@@ -14,8 +14,8 @@ const blogDescrValidator = body('description')
 
 const blogWebsiteUrlValidator = body('websiteUrl')
   .notEmpty().withMessage('Url should not be empty')
-  .notEmpty().withMessage('Name should not be empty')
   .isString().withMessage('Website url should be string')
+  .isLength({ max: 100 }).withMessage('Url should be 100 characters max')
   .matches(/^https:\/\/([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\/?$/)
   .withMessage('Website url should be a valid url');
 
