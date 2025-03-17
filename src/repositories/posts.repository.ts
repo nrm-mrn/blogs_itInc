@@ -74,6 +74,10 @@ export const postsRepository = {
   },
 
   async deletePost(id: ObjectId): Promise<{ error: string } | undefined> {
+    const post = await this.findPostById(id)
+    if (!post) {
+      return { error: 'post not found' }
+    }
     const res = await postsCollection.deleteOne({ _id: id })
     if (res.acknowledged) {
       return
