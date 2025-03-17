@@ -22,7 +22,6 @@ const postContentValidator = body('content')
   .withMessage('Content should be 1000 characters max');
 
 const postBlogIdValidator = body('blogId')
-  .isString().withMessage('BlogId should be string')
   .trim()
   .notEmpty().withMessage('BlogId should not be empty')
   .custom(async (blogId: string) => {
