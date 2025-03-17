@@ -1,5 +1,6 @@
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 import { blogRepository } from "../repositories/blogs.repository";
+import { ObjectId } from "mongodb";
 
 const postTitleValidator = body('title')
   .isString().withMessage('Title should be string')
@@ -25,17 +26,41 @@ const postBlogIdValidator = body('blogId')
   .trim()
   .notEmpty().withMessage('BlogId should not be empty')
   .custom(async (blogId: string) => {
-    const target = await blogRepository.findBlog(blogId);
+    const isValidId = ObjectId.isValid((blogId))
+    if (!isValidId) {
+      throw new Error('Not valid blogId')
+    }
+    const target = await blogRepository.findBlog(new ObjectId(blogId));
     if (!target) {
       throw new Error('blog with specified blogId does not exist')
     }
     return true
   })
 
+const postIdValidator = param('id')
+  .custom((postId: string) => {
+    const isValidId = ObjectId.isValid(postId)
+    if (!isValidId) {
+      throw new Error('Invalid id param')
+    }
+    return true
+  })
+
+export const postGetValidator = [
+  postIdValidator
+]
 
 export const postInputValidator = [
   postTitleValidator,
   postDescrValidator,
   postContentValidator,
   postBlogIdValidator,
+]
+
+export const postUpdateValidator = [
+  postIdValidator,
+  postTitleValidator,
+  postDescrValidator,
+  postContentValidator,
+  postBlogIdValidator
 ]

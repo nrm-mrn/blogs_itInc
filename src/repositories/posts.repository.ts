@@ -1,72 +1,83 @@
-import { db } from "../db/db";
-import { PostInputModel, PostViewModel } from "../db/db-types";
+import { ObjectId } from "mongodb";
+import { PostDbModel, PostInputModel, PostViewModel } from "../db/db-types";
+import { blogsCollection, postsCollection } from "../db/mongoDb";
 
 export const postsRepository = {
 
-  async createPost(input: PostInputModel): Promise<{ post: PostViewModel | null, error: string | null }> {
-    const parentBlog = db.blogs.find(b => b.id === input.blogId)
+  async getAllPosts(): Promise<Array<PostDbModel>> {
+    const posts = postsCollection.find({}).toArray()
+    return posts
+  },
+
+  async createPost(input: PostInputModel): Promise<{ post: PostDbModel | null, error: string | null }> {
+    const blogId = new ObjectId(input.blogId);
+    const parentBlog = await blogsCollection.findOne({ _id: blogId })
     if (!parentBlog) {
       return { post: null, error: 'BlogId does not exist' }
     }
-    const newPost: PostViewModel = {
-      id: (Date.now() + Math.random()).toString(),
+    const datetime = new Date()
+    const datetimeISO = datetime.toISOString()
+    const newPost: PostDbModel = {
+      _id: new ObjectId(),
       blogName: parentBlog.name,
-      ...input
+      createdAt: datetimeISO,
+      ...input,
+      blogId
     }
-    try {
-      db.posts = [...db.posts, newPost]
-    } catch (e: any) {
-      return { post: null, error: e.message }
+    const insertRes = await postsCollection.insertOne(newPost);
+    if (insertRes.acknowledged) {
+      return { post: newPost, error: null }
     }
-
-    return { post: newPost, error: null }
+    return { post: null, error: 'failed to create a post' }
   },
 
-  async findPostById(id: string): Promise<PostViewModel | undefined> {
-    return db.posts.find(b => b.id === id);
+  async findPostById(id: ObjectId): Promise<PostDbModel | null> {
+    const post = postsCollection.findOne({ _id: id })
+    return post
   },
 
-  async editPost(id: string, input: PostInputModel | PostViewModel): Promise<{ error: string } | undefined> {
+  async editPost(id: ObjectId, input: PostInputModel): Promise<{ error: string } | undefined> {
     const target = await this.findPostById(id);
     if (!target) {
       return { error: 'Id does not exist' }
     }
-    const updatedPost = { id: target.id, blogName: target.blogName, ...input }
-    const targetIdx = db.posts.findIndex(b => b.id === id);
-    db.posts.splice(targetIdx, 1, updatedPost)
-    return
-  },
-
-  async updatePostsByBlogId(blogId: string, input: Partial<PostViewModel>) {
-    const targetPosts = await this.findPostsByBlogId(blogId)
-    for (const post of targetPosts) {
-      const updated: PostViewModel = { ...post, ...input }
-      await this.editPost(updated.id, updated)
-    }
-    return
-  },
-
-  async findPostsByBlogId(blogId: string) {
-    const targetPosts: PostViewModel[] = db.posts.filter(p => p.blogId === blogId)
-    return targetPosts
-  },
-
-  async deletePostsByBlogId(blogId: string) {
-    const posts = await this.findPostsByBlogId(blogId)
-    if (!posts.length) {
+    const res = await postsCollection.updateOne({ _id: id }, {
+      $set: { ...input }
+    })
+    if (res.acknowledged) {
       return
     }
-    posts.forEach(post => {
-      this.deletePost(post.id)
-    })
+    return { error: 'Update failed' }
   },
 
-  async deletePost(id: string): Promise<{ error: string } | undefined> {
-    const targetIdx = db.posts.findIndex(b => b.id === id)
-    if (targetIdx < 0) {
-      return { error: 'Id does not exist' }
+  async updatePostsByBlogId(blogId: ObjectId, input: Partial<PostViewModel>): Promise<{ error: string } | undefined> {
+    const res = await postsCollection.updateMany({ "blogId": blogId }, {
+      $set: { ...input }
+    })
+    if (res.acknowledged) {
+      return
     }
-    db.posts.splice(targetIdx, 1);
-    return
+    return { error: 'Update failed' }
+  },
+
+  async findPostsByBlogId(blogId: ObjectId): Promise<Array<PostDbModel>> {
+    const posts = postsCollection.find({ blogId: blogId }).toArray()
+    return posts
+  },
+
+  async deletePostsByBlogId(blogId: ObjectId): Promise<{ error: string } | undefined> {
+    const res = await postsCollection.deleteMany({ "blogId": blogId })
+    if (res.acknowledged) {
+      return
+    }
+    return { error: 'Deletion failed' }
+  },
+
+  async deletePost(id: ObjectId): Promise<{ error: string } | undefined> {
+    const res = await postsCollection.deleteOne({ _id: id })
+    if (res.acknowledged) {
+      return
+    }
+    return { error: 'Deletion failed' }
   }
 }

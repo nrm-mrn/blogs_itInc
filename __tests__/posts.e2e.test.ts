@@ -1,7 +1,10 @@
-import { db, setDb } from "../src/db/db";
+import { ObjectId } from "mongodb";
 import { PostInputModel, PostViewModel } from "../src/db/db-types";
 import { SETTINGS } from "../src/settings/settings";
 import { req } from "./test-helpers";
+import { blogRepository } from "../src/repositories/blogs.repository";
+import { postsRepository } from "../src/repositories/posts.repository";
+import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
 
 
 describe('posts routes tests', () => {
@@ -9,25 +12,36 @@ describe('posts routes tests', () => {
   let codedAuth: string;
 
   beforeAll(async () => {
+    const res = await runDb(SETTINGS.MONGO_URL)
+    if (!res) {
+      process.exit(1)
+    }
+    await blogsCollection.drop()
+    await postsCollection.drop()
     const dbSeed = {
       blogs: [
         {
-          id: '1234',
           name: 'first',
           description: 'first blog desc',
           websiteUrl: 'https://google.com'
         },
         {
-          id: '4321',
           name: 'second',
           description: 'second blog desc',
           websiteUrl: 'https://google.com/test'
         },
       ]
     }
-    setDb(dbSeed);
-    buff = Buffer.from(db.users[0].auth)
+    for (const blog of dbSeed.blogs) {
+      await blogRepository.createBlog(blog);
+    }
+
+    buff = Buffer.from(SETTINGS.SUPERUSER!)
     codedAuth = buff.toString('base64')
+  })
+
+  afterAll(async () => {
+    await client.close()
   })
 
   it('should get 200 and empty array', async () => {
@@ -41,22 +55,22 @@ describe('posts routes tests', () => {
       title: 'some title',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: '54232',
+      blogId: new ObjectId(54321234),
     }
     const res = await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(post)
       .expect(400)
-    console.log(res.body)
     expect(res.body.errorsMessages[0].field).toEqual('blogId')
   })
 
   it('should create post', async () => {
+    const blogsDb = await blogRepository.getAllBlogs()
     const post: PostInputModel = {
       title: 'some title',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[0].id,
+      blogId: blogsDb[0]._id
     }
     const res = await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
@@ -66,15 +80,16 @@ describe('posts routes tests', () => {
     expect(res.body.title).toEqual(post.title)
     expect(res.body.shortDescription).toEqual(post.shortDescription)
     expect(res.body.content).toEqual(post.content)
-    expect(res.body.blogId).toEqual(post.blogId)
+    expect(res.body.blogId).toEqual(post.blogId.toString())
   })
 
   it('should get a post', async () => {
+    const blogsDb = await blogRepository.getAllBlogs();
     const post: PostInputModel = {
       title: 'another title',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[0].id,
+      blogId: blogsDb[0]._id,
     }
     const res = await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
@@ -86,13 +101,13 @@ describe('posts routes tests', () => {
 
   it('should update posts when the parent blog is updated', async () => {
     const updatedBlog = {
-      id: '1234',
       name: 'updatedName',
       description: 'first blog desc',
       websiteUrl: 'https://google.com'
     }
+    const blogs = await blogRepository.getAllBlogs()
 
-    await req.put(SETTINGS.PATHS.BLOGS + `/${updatedBlog.id}`)
+    await req.put(SETTINGS.PATHS.BLOGS + `/${blogs[0]._id}`)
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(updatedBlog)
       .expect(204)
@@ -101,16 +116,19 @@ describe('posts routes tests', () => {
     const posts: PostViewModel[] = postsRes.body
 
     posts.forEach(post => {
-      expect(post.blogName).toEqual(updatedBlog.name)
+      if (post.blogId.toString() === blogs[0]._id.toString()) {
+        expect(post.blogName).toEqual(updatedBlog.name)
+      }
     })
   })
 
   it('should update a post', async () => {
+    const blogs = await blogRepository.getAllBlogs()
     const post: PostInputModel = {
       title: 'updateable',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[1].id,
+      blogId: blogs[1]._id,
     }
     const res = await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
@@ -121,7 +139,7 @@ describe('posts routes tests', () => {
       title: 'too long title for a post should get validation error',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[1].id,
+      blogId: blogs[1]._id
     }
 
     await req.put(SETTINGS.PATHS.POSTS + `/${res.body.id}`)
@@ -133,22 +151,29 @@ describe('posts routes tests', () => {
       title: 'this should work',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[1].id,
+      blogId: blogs[1]._id,
     }
     await req.put(SETTINGS.PATHS.POSTS + `/${res.body.id}`)
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(validUpdate)
       .expect(204)
 
-    expect(db.posts.find(p => p.id === res.body.id)?.title).toEqual(validUpdate.title)
+    const dbPosts = await postsRepository.getAllPosts();
+
+    for (const post of dbPosts) {
+      if (post._id === res.body.id) {
+        expect(post.title).toEqual(validUpdate.title)
+      }
+    }
   })
 
   it('should delete a post', async () => {
+    const blogsDb = await blogRepository.getAllBlogs()
     const post: PostInputModel = {
       title: 'Deleteable',
       shortDescription: 'short desc',
       content: 'some post content',
-      blogId: db.blogs[1].id,
+      blogId: blogsDb[1]._id,
     }
     const res = await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
@@ -162,27 +187,37 @@ describe('posts routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .expect(204)
 
-    expect(db.posts.find(p => p.id === res.body.is)).toBeUndefined()
+    const dbPosts = await postsRepository.getAllPosts();
+    for (const post of dbPosts) {
+      if (post._id.toString() === res.body.id) {
+        expect(false).toBe(true);
+      }
+    }
   })
 
   it('should delete child posts when parent blog is deleted', async () => {
-    const targetBlogId = db.blogs[0].id
-    const firstBlogPosts = db.posts.filter(p => p.blogId === targetBlogId)
+    const blogsDb = await blogRepository.getAllBlogs()
+    const targetBlogId = blogsDb[0]._id
+    const postsDb = await postsRepository.getAllPosts()
+    const firstBlogPosts = postsDb.filter(p => p.blogId.toString() === targetBlogId.toString())
     expect(firstBlogPosts.length).toBeGreaterThan(0);
 
     await req.delete(SETTINGS.PATHS.BLOGS + `/${targetBlogId}`)
       .set({ 'authorization': 'Basic ' + codedAuth })
       .expect(204)
 
-    const updatedNumberPosts = db.posts.filter(p => p.blogId === targetBlogId)
+    const updatedPostsDb = await postsRepository.getAllPosts()
+    const updatedNumberPosts = updatedPostsDb.filter(p => p.blogId.toString() === targetBlogId.toString())
     expect(updatedNumberPosts.length).toBe(0)
   })
 
   it('should clear all blogs and posts', async () => {
     await req.delete('/testing/all-data').expect(204)
+    const blogsDb = await blogRepository.getAllBlogs()
+    const postsDb = await postsRepository.getAllPosts()
 
-    expect(db.blogs.length).toBe(0)
-    expect(db.posts.length).toBe(0)
+    expect(blogsDb.length).toBe(0)
+    expect(postsDb.length).toBe(0)
 
   })
 

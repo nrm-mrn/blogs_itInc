@@ -1,8 +1,8 @@
-import express, { Request, Response } from 'express'
+import express, { Request, Response } from 'express';
 import { blogsRouter } from './routes/blogs';
 import { postsRouter } from './routes/posts';
-import { setDb } from './db/db';
-import cors from 'cors'
+import cors from 'cors';
+import { blogsCollection, postsCollection } from './db/mongoDb';
 
 export const app = express()
 
@@ -11,10 +11,10 @@ app.use(cors())
 app.use('/blogs', blogsRouter);
 app.use('/posts', postsRouter);
 
-setDb();
 
 app.delete('/testing/all-data', async (req: Request, res: Response) => {
-  setDb();
+  await postsCollection.drop();
+  await blogsCollection.drop();
   res.sendStatus(204);
   return
 })

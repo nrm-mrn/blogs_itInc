@@ -1,17 +1,22 @@
 import { Request, Response, Router } from "express";
-import { db } from "../db/db";
 import { BlogInputModel, BlogViewModel } from "../db/db-types";
 import { blogRepository } from "../repositories/blogs.repository";
 import { authMiddleware } from "../middlewares/auth.middleware";
-import { blogInputValidation } from "./blogs.validators";
+import { blogGetValidation, blogInputValidation, blogUpdateValidation } from "./blogs.validators";
 import { inputValidationResultMiddleware } from "../middlewares/validationResult.middleware";
+import { param } from "express-validator";
+import { ObjectId } from "mongodb";
 
 
 export const blogsRouter = Router({})
 
-blogsRouter.get('/', (req: Request, res: Response) => {
-  const blogs = db.blogs;
-  res.status(200).send(blogs)
+blogsRouter.get('/', async (req: Request, res: Response) => {
+  const blogs = await blogRepository.getAllBlogs()
+  const blogsView: BlogViewModel[] = blogs.map(blog => {
+    const { _id, ...rest } = blog
+    return { id: _id, ...rest }
+  })
+  res.status(200).send(blogsView)
   return;
 })
 
@@ -20,27 +25,38 @@ blogsRouter.post('/',
   blogInputValidation,
   inputValidationResultMiddleware,
   async (req: Request<any, any, BlogInputModel>, res: Response<BlogViewModel>) => {
-    const { blog, error } = await blogRepository.createBlog(req.body);
-    res.status(201).send(blog!)
+    const { newBlog, error } = await blogRepository.createBlog(req.body);
+    const { _id, ...rest } = newBlog!;
+    const newBlogView: BlogViewModel = { id: _id, ...rest }
+    res.status(201).send(newBlogView)
     return;
   })
 
-blogsRouter.get('/:id', async (req: Request<{ 'id': string }>, res: Response<BlogViewModel>) => {
-  const blog = await blogRepository.findBlog(req.params.id);
-  if (!blog) {
-    res.sendStatus(404);
+blogsRouter.get('/:id',
+  blogGetValidation,
+  inputValidationResultMiddleware,
+  param('id').customSanitizer(id => new ObjectId(id)),
+  async (req: Request<{ 'id': string }>, res: Response<BlogViewModel>) => {
+    const id = req.params.id as unknown as ObjectId
+    const blog = await blogRepository.findBlog(id);
+    if (!blog) {
+      res.sendStatus(404);
+      return;
+    }
+    const { _id, ...rest } = blog;
+    const blogView: BlogViewModel = { id: _id, ...rest };
+    res.status(200).send(blogView)
     return;
-  }
-  res.status(200).send(blog)
-  return;
-})
+  })
 
 blogsRouter.put('/:id',
   authMiddleware,
-  blogInputValidation,
+  blogUpdateValidation,
   inputValidationResultMiddleware,
-  async (req: Request<{ 'id': string }, any, BlogInputModel>, res: Response) => {
-    const result = await blogRepository.editBlog(req.params.id, req.body)
+  param('id').customSanitizer(id => new ObjectId(id)),
+  async (req: Request<{ 'id': string }, any, BlogInputModel, any>, res: Response) => {
+    const id = req.params.id as unknown as ObjectId
+    const result = await blogRepository.editBlog(id, req.body)
     if (result?.error) {
       res.sendStatus(404);
       return;
@@ -51,8 +67,10 @@ blogsRouter.put('/:id',
 
 blogsRouter.delete('/:id',
   authMiddleware,
+  param('id').customSanitizer(id => new ObjectId(id)),
   async (req: Request<{ 'id': string }>, res: Response) => {
-    const result = await blogRepository.deleteBlog(req.params.id)
+    const id = req.params.id as unknown as ObjectId
+    const result = await blogRepository.deleteBlog(id)
     if (result?.error) {
       res.sendStatus(404);
       return;

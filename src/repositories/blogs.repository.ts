@@ -1,48 +1,59 @@
-import { db } from "../db/db";
-import { BlogInputModel, BlogViewModel } from "../db/db-types";
+import { ObjectId } from "mongodb";
+import { BlogDbModel, BlogInputModel, BlogViewModel } from "../db/db-types";
+import { blogsCollection } from "../db/mongoDb";
 import { postsRepository } from "./posts.repository";
 
 export const blogRepository = {
 
-  async createBlog(input: BlogInputModel): Promise<{ blog: BlogViewModel | null, error: string | null }> {
-    const newBlog: BlogViewModel = {
-      id: (Date.now() + Math.random()).toString(),
+  async getAllBlogs(): Promise<Array<BlogDbModel>> {
+    const blogs = await blogsCollection.find({}).toArray();
+    return blogs
+  },
+
+  async createBlog(input: BlogInputModel): Promise<{ newBlog: BlogDbModel | null, error: string | null }> {
+    const datetime = new Date()
+    const datetimeISO = datetime.toISOString()
+    const newBlog: BlogDbModel = {
+      _id: new ObjectId(),
+      isMembership: false,
+      createdAt: datetimeISO,
       ...input
     }
-    try {
-      db.blogs = [...db.blogs, newBlog]
-    } catch (e: any) {
-      return { blog: null, error: e.message }
+    const insertRes = await blogsCollection.insertOne(newBlog)
+    if (insertRes.acknowledged) {
+      return { newBlog, error: null }
     }
-
-    return { blog: newBlog, error: null }
+    return { newBlog: null, error: 'Failed to create a blog' }
   },
 
-  async findBlog(id: string): Promise<BlogViewModel | undefined> {
-    return db.blogs.find(b => b.id === id);
+  async findBlog(id: ObjectId): Promise<BlogDbModel | null> {
+    const blog = blogsCollection.findOne({ _id: id })
+    return blog
   },
 
-  async editBlog(id: string, input: BlogInputModel): Promise<{ error: string } | undefined> {
+  async editBlog(id: ObjectId, input: BlogInputModel): Promise<{ error: string } | undefined> {
     const target = await this.findBlog(id);
     if (!target) {
       return { error: 'Id does not exist' }
     }
-    const updatedBlog = { id: target.id, ...input }
-    const targetIdx = db.blogs.findIndex(b => b.id === id);
-    db.blogs.splice(targetIdx, 1, updatedBlog)
+    const res = await blogsCollection.updateOne({ _id: id }, { $set: { ...input } })
+
     if (target.name !== input.name) {
-      postsRepository.updatePostsByBlogId(id, { blogName: updatedBlog.name })
+      await postsRepository.updatePostsByBlogId(id, { blogName: input.name })
     }
     return
   },
 
-  async deleteBlog(id: string): Promise<{ error: string } | undefined> {
-    const targetIdx = db.blogs.findIndex(b => b.id === id)
-    if (targetIdx < 0) {
+  async deleteBlog(id: ObjectId): Promise<{ error: string } | undefined> {
+    const target = await this.findBlog(id);
+    if (!target) {
       return { error: 'Id does not exist' }
     }
-    db.blogs.splice(targetIdx, 1);
-    postsRepository.deletePostsByBlogId(id)
-    return
+    const res = await blogsCollection.deleteOne({ _id: id })
+    if (res.acknowledged) {
+      await postsRepository.deletePostsByBlogId(id)
+      return
+    }
+    return { error: 'failed to delete the blog' }
   }
 }

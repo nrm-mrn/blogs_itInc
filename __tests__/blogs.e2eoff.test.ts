@@ -1,5 +1,5 @@
-import { db, setDb } from "../src/db/db"
 import { BlogInputModel } from "../src/db/db-types";
+import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
 import { SETTINGS } from "../src/settings/settings";
 import { req } from "./test-helpers";
 
@@ -8,9 +8,18 @@ describe('blogs routes tests', () => {
   let buff;
   let codedAuth: string;
   beforeAll(async () => {
-    setDb();
-    buff = Buffer.from(db.users[0].auth);
+    const res = await runDb(SETTINGS.MONGO_URL)
+    if (!res) {
+      process.exit(1)
+    }
+    await blogsCollection.drop()
+    await postsCollection.drop()
+    buff = Buffer.from(SETTINGS.SUPERUSER!);
     codedAuth = buff.toString('base64')
+  })
+
+  afterAll(async () => {
+    await client.close()
   })
 
 
@@ -26,7 +35,8 @@ describe('blogs routes tests', () => {
     const validBlog: BlogInputModel = {
       name: 'First blog',
       description: 'some description of the first blog',
-      websiteUrl: 'https://google.com'
+      websiteUrl: 'https://google.com',
+
     }
     let res = await req.post(SETTINGS.PATHS.BLOGS).send(validBlog).expect(401)
 
@@ -42,7 +52,7 @@ describe('blogs routes tests', () => {
 
   it('Should get validation errors on update', async () => {
     const validBlog: BlogInputModel = {
-      name: 'First blog',
+      name: 'First blog upd',
       description: 'some description of the first blog',
       websiteUrl: 'https://google.com'
     }

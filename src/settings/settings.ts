@@ -7,5 +7,8 @@ export const SETTINGS = {
   PATHS: {
     BLOGS: '/blogs',
     POSTS: '/posts',
-  }
+  },
+  DB_NAME: process.env.DB_NAME || 'test',
+  MONGO_URL: process.env.MONGO_URL || '',
+  SUPERUSER: process.env.SUPERUSER
 }

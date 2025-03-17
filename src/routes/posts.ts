@@ -1,17 +1,22 @@
 import { Request, Response, Router } from "express";
-import { db } from "../db/db";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { inputValidationResultMiddleware } from "../middlewares/validationResult.middleware";
 import { PostInputModel, PostViewModel } from "../db/db-types";
 import { postsRepository } from "../repositories/posts.repository";
-import { postInputValidator } from "./posts.validators";
+import { postGetValidator, postInputValidator, postUpdateValidator } from "./posts.validators";
+import { param } from "express-validator";
+import { ObjectId } from "mongodb";
 
 
 export const postsRouter = Router({})
 
-postsRouter.get('/', (req: Request, res: Response) => {
-  const posts = db.posts;
-  res.status(200).send(posts)
+postsRouter.get('/', async (req: Request, res: Response) => {
+  const postsDb = await postsRepository.getAllPosts()
+  const postsView: PostViewModel[] = postsDb.map(post => {
+    const { _id, ...rest } = post
+    return { id: _id, ...rest }
+  })
+  res.status(200).send(postsView)
   return;
 })
 
@@ -20,31 +25,42 @@ postsRouter.post('/',
   postInputValidator,
   inputValidationResultMiddleware,
   async (req: Request<any, any, PostInputModel>, res: Response<PostViewModel>) => {
-    const { post, error } = await postsRepository.createPost(req.body);
+    const { post: postDb, error } = await postsRepository.createPost(req.body);
     if (error !== null) {
       res.sendStatus(400)
       return
     }
-    res.status(201).send(post!)
+    const { _id, ...rest } = postDb!
+    const postView: PostViewModel = { id: _id, ...rest };
+    res.status(201).send(postView)
     return;
   })
 
-postsRouter.get('/:id', async (req: Request<{ 'id': string }>, res: Response<PostViewModel>) => {
-  const post = await postsRepository.findPostById(req.params.id);
-  if (!post) {
-    res.sendStatus(404);
+postsRouter.get('/:id',
+  postGetValidator,
+  inputValidationResultMiddleware,
+  param('id').customSanitizer(id => new ObjectId(id)),
+  async (req: Request<{ 'id': string }>, res: Response<PostViewModel>) => {
+    const id = req.params.id as unknown as ObjectId
+    const postDb = await postsRepository.findPostById(id);
+    if (!postDb) {
+      res.sendStatus(404);
+      return;
+    }
+    const { _id, ...rest } = postDb!
+    const postView: PostViewModel = { id: _id, ...rest }
+    res.status(200).send(postView)
     return;
-  }
-  res.status(200).send(post)
-  return;
-})
+  })
 
 postsRouter.put('/:id',
   authMiddleware,
-  postInputValidator,
+  postUpdateValidator,
   inputValidationResultMiddleware,
+  param('id').customSanitizer(id => new ObjectId(id)),
   async (req: Request<{ 'id': string }, any, PostInputModel>, res: Response) => {
-    const result = await postsRepository.editPost(req.params.id, req.body)
+    const id = req.params.id as unknown as ObjectId;
+    const result = await postsRepository.editPost(id, req.body)
     if (result?.error) {
       res.sendStatus(404);
       return;
@@ -55,8 +71,10 @@ postsRouter.put('/:id',
 
 postsRouter.delete('/:id',
   authMiddleware,
+  param('id').customSanitizer(id => new ObjectId(id)),
   async (req: Request<{ 'id': string }>, res: Response) => {
-    const result = await postsRepository.deletePost(req.params.id)
+    const id = req.params.id as unknown as ObjectId;
+    const result = await postsRepository.deletePost(id)
     if (result?.error) {
       res.sendStatus(404);
       return;
