@@ -61,7 +61,6 @@ describe('posts routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(post)
       .expect(400)
-    expect(res.body.errorsMessages[0].field).toEqual('blogId')
   })
 
   it('should create post', async () => {

@@ -21,21 +21,6 @@ const postContentValidator = body('content')
   .isLength({ max: 1000 })
   .withMessage('Content should be 1000 characters max');
 
-const postBlogIdValidator = body('blogId')
-  .trim()
-  .notEmpty().withMessage('BlogId should not be empty')
-  .custom(async (blogId: string) => {
-    const isValidId = ObjectId.isValid((blogId))
-    if (!isValidId) {
-      throw new Error('Not valid blogId')
-    }
-    const target = await blogRepository.findBlog(new ObjectId(blogId));
-    if (!target) {
-      throw new Error('blog with specified blogId does not exist')
-    }
-    return true
-  })
-
 const postIdValidator = param('id')
   .custom((postId: string) => {
     const isValidId = ObjectId.isValid(postId)
@@ -53,7 +38,6 @@ export const postInputValidator = [
   postTitleValidator,
   postDescrValidator,
   postContentValidator,
-  postBlogIdValidator,
 ]
 
 export const postUpdateValidator = [
