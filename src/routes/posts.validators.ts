@@ -62,5 +62,4 @@ export const postUpdateValidator = [
   postTitleValidator,
   postDescrValidator,
   postContentValidator,
-  postBlogIdValidator
 ]
