@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { BlogInputModel, BlogViewModel, PostInputModel, PostViewModel } from "../db/db-types";
+import { BlogInputModel, BlogPostInputModel, BlogViewModel, PostInputModel, PostViewModel } from "../db/db-types";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { blogGetValidation, blogInputValidation, blogUpdateValidation } from "./blogs.validators";
 import { inputValidationResultMiddleware } from "../middlewares/validationResult.middleware";
@@ -72,8 +72,15 @@ blogsRouter.post('/:id/posts',
   blogGetValidation,
   postInputValidator,
   param('id').customSanitizer(id => new ObjectId(id)),
-  async (req: Request<{ id: string }, any, PostInputModel, any>, res: Response<PostViewModel | APIErrorResult>) => {
-    //implement possibly using postsService
+  async (req: Request<{ id: string }, any, BlogPostInputModel, any>, res: Response<PostViewModel | APIErrorResult>) => {
+    const id = req.params.id as unknown as ObjectId
+    const postInput: BlogPostInputModel = req.body
+    const { post, error } = await blogService.createPostForBlog(id, postInput)
+    if (!post) {
+      res.sendStatus(404);
+      return
+    }
+    res.status(201).send(post)
   }
 
 )

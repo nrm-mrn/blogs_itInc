@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { PostDbModel, PostInputModel, PostViewModel } from "../db/db-types";
-import { blogsCollection, postsCollection } from "../db/mongoDb";
+import { postsCollection } from "../db/mongoDb";
 import { postsQueryRepository } from "./postsQuery.repository";
 
 export const postsRepository = {

@@ -51,6 +51,12 @@ export type PostInputModel = {
   blogId: ObjectId;
 }
 
+export type BlogPostInputModel = {
+  title: string;
+  shortDescription: string;
+  content: string;
+}
+
 export type UserModel = {
   _id: ObjectId;
   auth: string;

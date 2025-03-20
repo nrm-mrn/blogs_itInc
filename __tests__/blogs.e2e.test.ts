@@ -1,4 +1,4 @@
-import { BlogInputModel, BlogViewModel } from "../src/db/db-types";
+import { BlogInputModel, BlogPostInputModel, BlogViewModel, PostViewModel } from "../src/db/db-types";
 import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
 import { blogService } from "../src/domain/blogs.service";
 import { SETTINGS } from "../src/settings/settings";
@@ -133,6 +133,34 @@ describe('blogs routes tests', () => {
 
     await req.get(SETTINGS.PATHS.BLOGS + `/${blogObj.body.id}`)
       .expect(404)
+  })
+
+  it('Should create a post for specified blog', async () => {
+    const validBlog: BlogInputModel = {
+      name: 'Bl for posts',
+      description: 'some description of the updateable blog',
+      websiteUrl: 'https://google.com'
+    }
+
+    let res = await req.post(SETTINGS.PATHS.BLOGS)
+      .set({ 'authorization': 'Basic ' + codedAuth })
+      .send(validBlog)
+      .expect(201)
+    const blogObj: BlogViewModel = res.body
+
+    const postInput: BlogPostInputModel = {
+      title: 'post for bl',
+      shortDescription: 'test short dec',
+      content: 'some test c'
+    }
+    res = await req.post(SETTINGS.PATHS.BLOGS + `/${blogObj.id}/posts`)
+      .set({ 'authorization': 'Basic ' + codedAuth })
+      .send(postInput)
+      .expect(201)
+    const postObj: PostViewModel = res.body
+
+    expect(postObj.title).toEqual(postInput.title)
+    expect(postObj.blogId).toEqual(blogObj.id)
   })
 
   it('Test pagination', async () => {

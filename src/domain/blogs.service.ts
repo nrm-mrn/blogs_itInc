@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
-import { BlogDbModel, BlogInputModel, BlogViewModel } from "../db/db-types";
+import { BlogDbModel, BlogInputModel, BlogPostInputModel, BlogViewModel, PostViewModel } from "../db/db-types";
 import { blogRepository } from "../repositories/blogs.repository";
+import { postsService } from "./posts.service";
 
 export const blogService = {
   async createBlog(input: BlogInputModel): Promise<{ newBlog: BlogViewModel | null, error: string | null }> {
@@ -20,6 +21,10 @@ export const blogService = {
       return { newBlog: newBlogView, error: null }
     }
     return { newBlog: null, error: 'Failed to create a blog' }
+  },
+
+  async createPostForBlog(blogId: ObjectId, postInput: BlogPostInputModel): Promise<{ post: PostViewModel | null, error: string | null }> {
+    return postsService.createPost({ ...postInput, blogId })
   },
 
   async editBlog(id: ObjectId, input: BlogInputModel): Promise<{ error: string | null }> {
