@@ -6,6 +6,7 @@
     "watch": "tsc -w",
     "dev": "nodemon --inspect dist/index.js",
     "jest": "jest -i",
+    "jest:debug": "node --inspect-brk node_modules/.bin/jest -i",
     "license": "MIT",
     "jest:coverage": "jest -i --coverage"
   },

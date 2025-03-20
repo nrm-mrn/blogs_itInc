@@ -1,6 +1,8 @@
-import { BlogInputModel } from "../src/db/db-types";
+import { BlogInputModel, BlogViewModel } from "../src/db/db-types";
 import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
+import { blogService } from "../src/domain/blogs.service";
 import { SETTINGS } from "../src/settings/settings";
+import { GetBlogsQuery, PagedResponse, PagingParams, SortDirection } from "../src/shared/types";
 import { req } from "./test-helpers";
 
 describe('blogs routes tests', () => {
@@ -26,8 +28,9 @@ describe('blogs routes tests', () => {
   it('Should get 200 and an empty array', async () => {
 
     const res = await req.get(SETTINGS.PATHS.BLOGS).expect(200)
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBe(0);
+    const blogsPage: PagedResponse<BlogViewModel> = res.body
+    expect(Array.isArray(blogsPage.items)).toBe(true);
+    expect(blogsPage.items.length).toBe(0);
 
   })
 
@@ -106,7 +109,7 @@ describe('blogs routes tests', () => {
 
   it('Should get blogs', async () => {
     const res = await req.get(SETTINGS.PATHS.BLOGS).expect(200)
-    expect(res.body.length).toBe(3);
+    expect(res.body.items.length).toBe(3);
   })
 
   it('Should delete a blog', async () => {
@@ -130,6 +133,61 @@ describe('blogs routes tests', () => {
 
     await req.get(SETTINGS.PATHS.BLOGS + `/${blogObj.body.id}`)
       .expect(404)
+  })
+
+  it('Test pagination', async () => {
+    await blogsCollection.drop();
+    const sampleBlog =
+    {
+      name: 'first',
+      description: 'first blog desc',
+      websiteUrl: 'https://google.com'
+    }
+    const total = 25
+    for (let i = 0; i < total; i++) {
+      await blogService.createBlog({
+        name: `${i}` + sampleBlog.name,
+        description: sampleBlog.description + `${i}`,
+        websiteUrl: sampleBlog.websiteUrl
+      })
+    }
+
+    const allBlogs = await blogsCollection.find({}).toArray()
+    expect(allBlogs.length).toEqual(total)
+
+    let paging: PagingParams = {
+      sortDirection: SortDirection.ASC,
+      sortBy: 'createdAt',
+      pageSize: 4,
+      pageNumber: 1
+    }
+    const expectedTotalPages = Math.ceil(total / paging.pageSize)
+
+    //first page
+    let rawRes = await req.get(SETTINGS.PATHS.BLOGS).query(paging)
+    let res: PagedResponse<BlogViewModel> = rawRes.body
+    expect(res.pageSize).toEqual(paging.pageSize)
+    expect(res.totalCount).toEqual(total);
+    expect(res.page).toEqual(paging.pageNumber)
+    expect(res.pagesCount).toEqual(expectedTotalPages)
+    expect(res.items.length).toEqual(paging.pageSize)
+    expect(+res.items[0].name[0]).toEqual((paging.pageNumber - 1) * (paging.pageSize - 1));
+    expect(+res.items[paging.pageSize - 1].name[0]).toEqual(paging.pageNumber * paging.pageSize - 1);
+
+    //second page
+    paging = { ...paging, pageNumber: 2 }
+    rawRes = await req.get(SETTINGS.PATHS.BLOGS).query(paging)
+    res = rawRes.body
+    expect(res.page).toEqual(paging.pageNumber)
+    expect(+res.items[0].name[0]).toEqual((paging.pageNumber - 1) * (paging.pageSize));
+    expect(+res.items[paging.pageSize - 1].name[0]).toEqual(paging.pageNumber * paging.pageSize - 1);
+
+    //searchTerm
+    paging = { ...paging, pageNumber: 1, pageSize: 10 }
+    let query: GetBlogsQuery = { searchNameTerm: '1', ...paging }
+    rawRes = await req.get(SETTINGS.PATHS.BLOGS).query(query)
+    res = rawRes.body
+    expect(res.totalCount).toEqual(12);
   })
 
 
