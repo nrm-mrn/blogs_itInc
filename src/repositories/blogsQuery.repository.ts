@@ -42,7 +42,7 @@ export const blogQueryRepository = {
   },
 
   async getBlogPosts(dto: GetBlogPostsDto): Promise<{ data: PagedResponse<PostViewModel> | null, error: string | null }> {
-    const blog = this.findBlog(dto.blogId);
+    const blog = await this.findBlog(dto.blogId);
     if (!blog) {
       return { data: null, error: 'Blog does not exist' }
     }

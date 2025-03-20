@@ -54,11 +54,13 @@ blogsRouter.get('/:id',
 
 blogsRouter.get('/:id/posts',
   blogGetValidation,
+  inputValidationResultMiddleware,
   querySanitizerChain,
   param('id').customSanitizer(id => new ObjectId(id)),
-  async (req: Request<{ id: string }, any, {}, PagingParams>, res: Response<PagedResponse<PostViewModel>>) => {
+  async (req: Request<{ id: string }, any, {}>, res: Response<PagedResponse<PostViewModel>>) => {
     const id = req.params.id as unknown as ObjectId
-    const { data: postsPage, error } = await blogQueryRepository.getBlogPosts({ blogId: id, pagination: { ...req.query } })
+    const paging = req.query as unknown as PagingParams;
+    const { data: postsPage, error } = await blogQueryRepository.getBlogPosts({ blogId: id, pagination: { ...paging } })
     if (!postsPage) {
       res.sendStatus(404);
       return
@@ -71,6 +73,7 @@ blogsRouter.post('/:id/posts',
   authMiddleware,
   blogGetValidation,
   postInputValidator,
+  inputValidationResultMiddleware,
   param('id').customSanitizer(id => new ObjectId(id)),
   async (req: Request<{ id: string }, any, BlogPostInputModel, any>, res: Response<PostViewModel | APIErrorResult>) => {
     const id = req.params.id as unknown as ObjectId

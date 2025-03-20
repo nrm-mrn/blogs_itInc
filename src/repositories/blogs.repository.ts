@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
-import { BlogDbModel, BlogInputModel, BlogPostInputModel, PostDbModel, PostViewModel } from "../db/db-types";
-import { blogsCollection, postsCollection } from "../db/mongoDb";
+import { BlogDbModel, BlogInputModel } from "../db/db-types";
+import { blogsCollection } from "../db/mongoDb";
 import { postsRepository } from "./posts.repository";
 import { blogQueryRepository } from "./blogsQuery.repository";
 
