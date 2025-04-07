@@ -81,6 +81,7 @@ describe('users tests', () => {
       await req.delete(SETTINGS.PATHS.USERS + `/${user.id}`)
         .expect(401)
 
+
       await req.delete(SETTINGS.PATHS.USERS + `/${user.id}`)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(204)
@@ -90,6 +91,9 @@ describe('users tests', () => {
         .expect(200)
       const newUsersPage: PagedResponse<UserViewModel> = res2.body
       expect(newUsersPage.totalCount).toBe(originalTotal - 1)
+
+      await req.delete(SETTINGS.PATHS.USERS + `/${user.id}`)
+        .expect(404)
     })
 
     it('Should get validation errors', async () => {

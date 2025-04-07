@@ -72,7 +72,7 @@ usersRouter.delete('/:id',
   async (req: RequestWithParams<IdType>, res: Response) => {
     const id = req.params.id as unknown as ObjectId;
     try {
-      userService.deleteUser(id)
+      await userService.deleteUser(id)
     }
     catch (error) {
       res.sendStatus(404);

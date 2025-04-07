@@ -38,8 +38,7 @@ export const usersQueryRepository = {
       .toArray()
     const total = await usersCollection.countDocuments();
     const usersView = users.map(user => {
-      const { _id, ...rest } = user
-      return { id: _id, ...rest }
+      return { id: user._id, login: user.login, email: user.email, createdAt: user.createdAt }
     })
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
