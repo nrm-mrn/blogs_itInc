@@ -36,7 +36,7 @@ export const usersQueryRepository = {
       .skip((paging.pageNumber - 1) * paging.pageSize)
       .limit(paging.pageSize)
       .toArray()
-    const total = await usersCollection.countDocuments();
+    const total = await usersCollection.countDocuments(filter);
     const usersView = users.map(user => {
       return { id: user._id, login: user.login, email: user.email, createdAt: user.createdAt }
     })

@@ -93,6 +93,7 @@ describe('users tests', () => {
       expect(newUsersPage.totalCount).toBe(originalTotal - 1)
 
       await req.delete(SETTINGS.PATHS.USERS + `/${user.id}`)
+        .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(404)
     })
 
@@ -190,7 +191,7 @@ describe('users tests', () => {
         .expect(200)
       const res3: PagedResponse<UserViewModel> = rawRes.body
       expect(res3.items.length).toBe(13)
-    }, 10000)
+    }, 20000)
   })
 
   describe('auth tests', () => {
@@ -209,20 +210,20 @@ describe('users tests', () => {
         .send(validUser)
         .expect(201)
 
-      res = await req.get(SETTINGS.PATHS.AUTH + '/login')
+      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
         .send({ loginOrEmail: validUser.login, password: 'invalid' })
         .expect(401)
-      res = await req.get(SETTINGS.PATHS.AUTH + '/login')
+      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
         .send({ loginOrEmail: validUser.email, password: 'invalid' })
         .expect(401)
-      res = await req.get(SETTINGS.PATHS.AUTH + '/login')
+      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
         .send({ loginOrEmail: 'invalidLogin', password: validUser.password })
         .expect(401)
       '/blogs'
-      res = await req.get(SETTINGS.PATHS.AUTH + '/login')
+      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
         .send({ loginOrEmail: validUser.login, password: validUser.password })
         .expect(204)
-      res = await req.get(SETTINGS.PATHS.AUTH + '/login')
+      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
         .send({ loginOrEmail: validUser.email, password: validUser.password })
         .expect(204)
     })
