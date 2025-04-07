@@ -7,7 +7,7 @@ import { authService } from "../auth.service";
 
 export const authRouter = Router({})
 
-authRouter.get('/login',
+authRouter.post('/login',
   loginInputValidation,
   async (req: RequestWithBody<LoginBody>, res: Response) => {
     const creds: LoginDto = req.body;
