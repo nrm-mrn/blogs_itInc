@@ -1,8 +1,9 @@
 import { BlogInputModel, BlogPostInputModel, BlogViewModel, PostViewModel } from "../src/db/db-types";
 import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
-import { blogService } from "../src/domain/blogs.service";
+import { blogService } from "../src/blogs/blogs.service";
 import { SETTINGS } from "../src/settings/settings";
-import { GetBlogsQuery, PagedResponse, PagingParams, SortDirection } from "../src/shared/types";
+import { GetBlogsQuery } from "../src/blogs/blogs.types";
+import { PagedResponse, PagingFilter, SortDirection } from "../src/shared/types/pagination.types";
 import { req } from "./test-helpers";
 
 describe('blogs routes tests', () => {
@@ -183,7 +184,7 @@ describe('blogs routes tests', () => {
     const allBlogs = await blogsCollection.find({}).toArray()
     expect(allBlogs.length).toEqual(total)
 
-    let paging: PagingParams = {
+    let paging: PagingFilter = {
       sortDirection: SortDirection.ASC,
       sortBy: 'createdAt',
       pageSize: 4,
@@ -217,7 +218,4 @@ describe('blogs routes tests', () => {
     res = rawRes.body
     expect(res.totalCount).toEqual(12);
   })
-
-
-
 })

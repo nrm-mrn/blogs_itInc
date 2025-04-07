@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 import { BlogViewModel, PostViewModel } from "../db/db-types";
 import { blogsCollection, postsCollection } from "../db/mongoDb";
-import { GetBlogPostsDto, GetBlogsDto, PagedResponse } from "../shared/types";
+import { GetBlogsDto, GetBlogPostsDto } from "./blogs.types";
+import { PagedResponse } from "../shared/types/pagination.types";
 
 export const blogQueryRepository = {
 

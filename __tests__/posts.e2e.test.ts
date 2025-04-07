@@ -3,10 +3,11 @@ import { BlogViewModel, PostInputModel, PostViewModel } from "../src/db/db-types
 import { SETTINGS } from "../src/settings/settings";
 import { req } from "./test-helpers";
 import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
-import { blogService } from "../src/domain/blogs.service";
-import { blogQueryRepository } from "../src/repositories/blogsQuery.repository";
-import { GetBlogsDto, PagedResponse, SortDirection } from "../src/shared/types";
-import { postsQueryRepository } from "../src/repositories/postsQuery.repository";
+import { blogService } from "../src/blogs/blogs.service";
+import { blogQueryRepository } from "../src/blogs/blogsQuery.repository";
+import { postsQueryRepository } from "../src/posts/postsQuery.repository";
+import { GetBlogsDto } from "../src/blogs/blogs.types";
+import { PagedResponse, SortDirection } from "../src/shared/types/pagination.types";
 
 
 describe('posts routes tests', () => {

@@ -1,5 +1,5 @@
 import { query } from "express-validator";
-import { SortDirection } from "../shared/types";
+import { SortDirection } from "../../../shared/types/pagination.types";
 
 const searchNameTermV = query('searchNameTerm')
   .customSanitizer((searchTerm: string | undefined) => {
@@ -29,7 +29,7 @@ const pageNumber = query('pageNumber')
     return pageNumber ? +pageNumber : 1
   })
 
-export const querySanitizerChain = [
+export const getBlogsSanitizerChain = [
   searchNameTermV,
   sortBy,
   sortDirection,

@@ -1,22 +1,23 @@
-import { Request, Response, Router } from "express";
-import { authMiddleware } from "../middlewares/auth.middleware";
-import { inputValidationResultMiddleware } from "../middlewares/validationResult.middleware";
-import { PostInputModel, PostViewModel } from "../db/db-types";
-import { postGetValidator, postInputValidator, postUpdateValidator } from "./posts.validators";
-import { param } from "express-validator";
+import { Response, Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.middleware";
+import { inputValidationResultMiddleware } from "../../middlewares/validationResult.middleware";
+import { PostInputModel, PostViewModel } from "../../db/db-types";
 import { ObjectId } from "mongodb";
-import { postsQueryRepository } from "../repositories/postsQuery.repository";
-import { PagedResponse, PagingParams } from "../shared/types";
-import { querySanitizerChain } from "./shared.validators";
-import { postsService } from "../domain/posts.service";
+import { postsQueryRepository } from "../postsQuery.repository";
+import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
+import { postsService } from "../posts.service";
+import { idToObjectId, querySanitizerChain } from "../../shared/middlewares/shared.sanitizers";
+import { RequestWithBody, RequestWithParams, RequestWithParamsAndBody, RequestWithQuery } from "../../shared/types/requests.types";
+import { IdType } from "../../shared/types/id.type";
+import { postInputValidator, postGetValidator, postUpdateValidator } from "./middleware/posts.validators";
 
 
 export const postsRouter = Router({})
 
 postsRouter.get('/',
   querySanitizerChain,
-  async (req: Request<any, any, any, PagingParams>, res: Response<PagedResponse<PostViewModel>>) => {
-    const paging = req.query
+  async (req: RequestWithQuery<PagingQuery>, res: Response<PagedResponse<PostViewModel>>) => {
+    const paging = req.query as PagingFilter;
     const postsView = await postsQueryRepository.getAllPosts({ pagination: paging })
     res.status(200).send(postsView)
     return;
@@ -26,7 +27,7 @@ postsRouter.post('/',
   authMiddleware,
   postInputValidator,
   inputValidationResultMiddleware,
-  async (req: Request<any, any, PostInputModel>, res: Response<PostViewModel>) => {
+  async (req: RequestWithBody<PostInputModel>, res: Response<PostViewModel>) => {
     const { post, error } = await postsService.createPost(req.body);
     if (!post) {
       res.sendStatus(400)
@@ -39,8 +40,8 @@ postsRouter.post('/',
 postsRouter.get('/:id',
   postGetValidator,
   inputValidationResultMiddleware,
-  param('id').customSanitizer(id => new ObjectId(id)),
-  async (req: Request<{ 'id': string }>, res: Response<PostViewModel>) => {
+  idToObjectId,
+  async (req: RequestWithParams<IdType>, res: Response<PostViewModel>) => {
     const id = req.params.id as unknown as ObjectId
     const post = await postsQueryRepository.findPostById(id);
     if (!post) {
@@ -55,8 +56,8 @@ postsRouter.put('/:id',
   authMiddleware,
   postUpdateValidator,
   inputValidationResultMiddleware,
-  param('id').customSanitizer(id => new ObjectId(id)),
-  async (req: Request<{ 'id': string }, any, PostInputModel>, res: Response) => {
+  idToObjectId,
+  async (req: RequestWithParamsAndBody<IdType, PostInputModel>, res: Response) => {
     const id = req.params.id as unknown as ObjectId;
     const { error } = await postsService.editPost(id, req.body)
     if (error) {
@@ -69,8 +70,8 @@ postsRouter.put('/:id',
 
 postsRouter.delete('/:id',
   authMiddleware,
-  param('id').customSanitizer(id => new ObjectId(id)),
-  async (req: Request<{ 'id': string }>, res: Response) => {
+  idToObjectId,
+  async (req: RequestWithParams<IdType>, res: Response) => {
     const id = req.params.id as unknown as ObjectId;
     const { error } = await postsService.deletePost(id)
     if (error) {

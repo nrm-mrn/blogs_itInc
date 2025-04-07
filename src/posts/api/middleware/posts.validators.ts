@@ -1,5 +1,4 @@
 import { body, param } from "express-validator";
-import { blogRepository } from "../repositories/blogs.repository";
 import { ObjectId } from "mongodb";
 
 const postTitleValidator = body('title')

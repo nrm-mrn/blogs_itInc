@@ -18,6 +18,31 @@ export type BlogDbModel = {
   isMembership: boolean;
 }
 
+export type UserDbModel = {
+  login: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
+export type UserViewModel = {
+  id: ObjectId;
+  login: string;
+  email: string;
+  createdAt: string;
+}
+
+export type UserInputModel = {
+  login: string;
+  password: string;
+  email: string;
+}
+
+export type LoginInputModel = {
+  loginOrEmail: string;
+  password: string;
+}
+
 export type BlogInputModel = {
   name: string;
   description: string;
@@ -57,7 +82,3 @@ export type BlogPostInputModel = {
   content: string;
 }
 
-export type UserModel = {
-  _id: ObjectId;
-  auth: string;
-}
