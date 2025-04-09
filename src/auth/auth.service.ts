@@ -24,6 +24,7 @@ export const authService = {
       if (isValidPass) {
         try {
           const userId = user._id.toString()
+          console.log(`UserId: ${userId}`)
           return { accessToken: jwtService.createToken(userId) }
         } catch (err) {
           throw new CustomError(`Error creating string from objectId: ${err}`, HttpStatuses.ServerError)
