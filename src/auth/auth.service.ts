@@ -13,21 +13,18 @@ export const authService = {
     let user: WithId<UserDbModel>;
     try {
       user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
-    }
-    catch (err) {
-      throw new CustomError('User not found by login or email', HttpStatuses.Unauthorized)
-    }
-    const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
-    if (isValidPass) {
-      try {
-        const userId = user._id as unknown as string
-        console.log(`UserId: ${userId}`)
-        return { accessToken: jwtService.createToken(userId) }
-      } catch (err) {
-        throw new CustomError(`Error creating string from objectId: ${err}`, HttpStatuses.ServerError)
+      const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
+      if (isValidPass) {
+        return { accessToken: jwtService.createToken(user._id.toString()) }
+      }
+      throw new CustomError('Wrong ogin or password', HttpStatuses.Unauthorized)
+    } catch (err) {
+      if (err instanceof CustomError) {
+        throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
+      } else {
+        throw new Error(`Could not check user credentials: ${err}`)
       }
     }
-    throw new CustomError('Wrong password', HttpStatuses.Unauthorized)
   },
 
   async getUserInfo(id: ObjectId): Promise<{ data: MeView }> {
