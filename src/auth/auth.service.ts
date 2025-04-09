@@ -20,6 +20,7 @@ export const authService = {
     try {
       console.log(`Passing creds for compare pass: ${credentials.password}, hash: ${user.passwordHash}`)
       const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
+      console.log('hash checked')
       if (isValidPass) {
         return { accessToken: jwtService.createToken(user._id.toString()) }
       }
