@@ -18,6 +18,7 @@ export const authService = {
       throw new CustomError('User not found by login or email', HttpStatuses.Unauthorized)
     }
     try {
+      console.log(`Passing creds for compare pass: ${credentials.password}, hash: ${user.passwordHash}`)
       const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
       if (isValidPass) {
         return { accessToken: jwtService.createToken(user._id.toString()) }
