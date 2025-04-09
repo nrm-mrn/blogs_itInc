@@ -16,10 +16,10 @@ export const authService = {
       if (isValidPass) {
         return { accessToken: jwtService.createToken(user._id.toString()) }
       }
-      throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
+      throw new CustomError('Wrong password', HttpStatuses.Unauthorized)
     } catch (err) {
       if (err instanceof CustomError) {
-        throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
+        throw new CustomError('Wrong password', HttpStatuses.Unauthorized)
       } else {
         throw new Error('Could not check user credentials')
       }
