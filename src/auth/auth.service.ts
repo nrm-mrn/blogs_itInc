@@ -22,7 +22,12 @@ export const authService = {
       const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
       console.log('hash checked')
       if (isValidPass) {
-        return { accessToken: jwtService.createToken(user._id.toString()) }
+        try {
+          const userId = user._id.toString()
+          return { accessToken: jwtService.createToken(userId) }
+        } catch (err) {
+          throw new CustomError(`Error creating string from objectId: ${err}`, HttpStatuses.ServerError)
+        }
       }
       throw new CustomError('Wrong password', HttpStatuses.Unauthorized)
     } catch (err) {
