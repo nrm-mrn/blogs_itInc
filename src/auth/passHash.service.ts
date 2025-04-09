@@ -14,7 +14,6 @@ export const passwordHashService = {
   },
 
   async compareHash(password: string, hash: string): Promise<boolean> {
-    console.log(`Got creds for compare pass: ${password}, hash: ${hash}`)
     return bcrypt.compare(password, hash);
   }
 }
