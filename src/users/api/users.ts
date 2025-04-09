@@ -27,7 +27,6 @@ usersRouter.get('/',
       pagination: { ...rest }
     }
     try {
-
       const usersView = await usersQueryRepository.getAllUsers(getUsersDto)
       res.status(200).send(usersView)
       return;

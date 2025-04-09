@@ -13,6 +13,11 @@ export const authService = {
     let user: WithId<UserDbModel>;
     try {
       user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
+    }
+    catch (err) {
+      throw new CustomError('User not found by login or email', HttpStatuses.Unauthorized)
+    }
+    try {
       const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
       if (isValidPass) {
         return { accessToken: jwtService.createToken(user._id.toString()) }
@@ -22,7 +27,7 @@ export const authService = {
       if (err instanceof CustomError) {
         throw new CustomError('Wrong password', HttpStatuses.Unauthorized)
       } else {
-        throw new Error('Could not check user credentials')
+        throw new Error(`Could not check user credentials, error: ${err}`)
       }
     }
   },
