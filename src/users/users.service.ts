@@ -1,26 +1,35 @@
 import { ObjectId } from "mongodb";
-import { UserDbModel, UserInputModel, UserViewModel } from "../db/db-types";
 import { usersQueryRepository } from "./usersQuery.repository";
-import bcrypt from 'bcrypt';
 import { usersRepository } from "./users.repository";
+import { APIErrorResult, CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
+import { UserInputModel, UserViewModel, UserDbModel } from "./users.types";
+import { passwordHashService } from "../auth/passHash.service";
 
 export const userService = {
   async createUser(input: UserInputModel): Promise<UserViewModel> {
     const uniqueLogin = await this.isLoginUnique(input.login)
     if (!uniqueLogin) {
-      throw new Error('Login should be unique');
+      const error: APIErrorResult = {
+        errorsMessages: [
+          { field: 'login', message: 'Login already exists' }
+        ]
+      }
+      throw new CustomError('Login already exists', HttpStatuses.BadRequest, error)
     }
     const uniqueEmail = await this.isEmailUnique(input.email)
     if (!uniqueEmail) {
-      throw new Error('Email should be unique');
+      const error: APIErrorResult = {
+        errorsMessages: [
+          { field: 'email', message: 'Email already exists' }
+        ]
+      }
+      throw new CustomError('Email already exists', HttpStatuses.BadRequest, error)
     }
 
     const datetime = new Date();
     const datetimeISO = datetime.toISOString();
-    const hash = await this.createPwdHash(input.password);
-    if (!hash) {
-      throw new Error('Failed to create hash');
-    }
+    const hash = await passwordHashService.createHash(input.password);
     const newUser: UserDbModel = {
       createdAt: datetimeISO,
       passwordHash: hash,
@@ -29,19 +38,6 @@ export const userService = {
     const userId = await usersRepository.createUser(newUser)
 
     return { id: userId, login: newUser.login, email: newUser.email, createdAt: newUser.createdAt }
-  },
-
-  async createPwdHash(password: string): Promise<string | null> {
-    const saltRounds = 10
-    try {
-      const salt = await bcrypt.genSalt(saltRounds)
-      const hash = await bcrypt.hash(password, salt);
-      return hash
-    }
-    catch (err) {
-      console.error('Generating hash failed')
-    }
-    return null
   },
 
   async isLoginUnique(login: string): Promise<boolean> {

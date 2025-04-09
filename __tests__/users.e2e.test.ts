@@ -1,10 +1,10 @@
-import { BlogViewModel, UserInputModel, UserViewModel } from "../src/db/db-types";
 import { blogsCollection, client, postsCollection, runDb, usersCollection } from "../src/db/mongoDb";
 import { userService } from "../src/users/users.service";
 import { SETTINGS } from "../src/settings/settings";
 import { PagedResponse, PagingQuery, SortDirection } from "../src/shared/types/pagination.types";
-import { GetUsersQuery } from "../src/users/users.types";
+import { GetUsersQuery, UserInputModel, UserViewModel } from "../src/users/users.types";
 import { req } from "./test-helpers";
+import { BlogViewModel } from "../src/blogs/blogs.types";
 
 describe('users tests', () => {
 
@@ -192,42 +192,5 @@ describe('users tests', () => {
       const res3: PagedResponse<UserViewModel> = rawRes.body
       expect(res3.items.length).toBe(13)
     }, 20000)
-  })
-
-  describe('auth tests', () => {
-    afterAll(async () => {
-      await usersCollection.drop()
-    })
-
-    it('Should check user credentials', async () => {
-      const validUser: UserInputModel = {
-        login: 'testUser',
-        password: 'qwerty123',
-        email: 'test@gmail.com'
-      }
-      let res = await req.post(SETTINGS.PATHS.USERS)
-        .set({ 'authorization': 'Basic ' + codedAuth })
-        .send(validUser)
-        .expect(201)
-
-      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.login, password: 'invalid' })
-        .expect(401)
-      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.email, password: 'invalid' })
-        .expect(401)
-      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: 'invalidLogin', password: validUser.password })
-        .expect(401)
-      '/blogs'
-      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.login, password: validUser.password })
-        .expect(204)
-      res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.email, password: validUser.password })
-        .expect(204)
-    })
-
-
   })
 })

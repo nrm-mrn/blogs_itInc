@@ -1,10 +1,10 @@
-import { BlogInputModel, BlogPostInputModel, BlogViewModel, PostViewModel } from "../src/db/db-types";
 import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
 import { blogService } from "../src/blogs/blogs.service";
 import { SETTINGS } from "../src/settings/settings";
-import { GetBlogsQuery } from "../src/blogs/blogs.types";
+import { BlogInputModel, BlogViewModel, GetBlogsQuery } from "../src/blogs/blogs.types";
 import { PagedResponse, PagingFilter, SortDirection } from "../src/shared/types/pagination.types";
 import { req } from "./test-helpers";
+import { BlogPostInputModel, PostViewModel } from "../src/posts/posts.types";
 
 describe('blogs routes tests', () => {
 

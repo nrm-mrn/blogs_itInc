@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
-import { PostDbModel, PostInputModel, PostViewModel } from "../db/db-types";
 import { postsCollection } from "../db/mongoDb";
 import { postsQueryRepository } from "./postsQuery.repository";
+import { commentsRepository } from "../comments/comments.repository";
+import { PostDbModel, PostInputModel, PostViewModel } from "./posts.types";
 
 export const postsRepository = {
 
@@ -50,6 +51,7 @@ export const postsRepository = {
     if (!post) {
       return { error: 'post not found' }
     }
+    await commentsRepository.deleteCommentsByPost(id)
     const res = await postsCollection.deleteOne({ _id: id })
     if (res.acknowledged) {
       return { error: null }

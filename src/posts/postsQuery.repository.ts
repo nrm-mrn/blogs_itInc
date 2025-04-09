@@ -1,8 +1,7 @@
 import { ObjectId } from "mongodb";
-import { PostViewModel } from "../db/db-types";
 import { postsCollection } from "../db/mongoDb";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { GetPostsDto } from "./posts.types";
+import { GetPostsDto, PostViewModel } from "./posts.types";
 
 export const postsQueryRepository = {
 

@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
-import { PostInputModel, PostDbModel, PostViewModel } from "../db/db-types";
 import { blogQueryRepository } from "../blogs/blogsQuery.repository";
 import { postsRepository } from "./posts.repository";
+import { PostInputModel, PostViewModel, PostDbModel } from "./posts.types";
 
 export const postsService = {
   async createPost(input: PostInputModel): Promise<{ post: PostViewModel | null, error: string | null }> {

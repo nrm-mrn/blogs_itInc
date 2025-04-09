@@ -1,8 +1,8 @@
 import { ObjectId } from "mongodb";
-import { BlogDbModel, BlogInputModel } from "../db/db-types";
 import { blogsCollection } from "../db/mongoDb";
 import { postsRepository } from "../posts/posts.repository";
 import { blogQueryRepository } from "./blogsQuery.repository";
+import { BlogDbModel, BlogInputModel } from "./blogs.types";
 
 export const blogRepository = {
 

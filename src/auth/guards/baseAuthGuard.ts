@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { SETTINGS } from "../settings/settings";
+import { SETTINGS } from "../../settings/settings";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const baseAuthGuard = (req: Request, res: Response, next: NextFunction) => {
   const auth = req.headers.authorization // Basic xxxx
   if (!auth) {
     res.status(401).send({})

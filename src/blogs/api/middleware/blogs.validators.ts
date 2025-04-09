@@ -1,5 +1,5 @@
-import { body, param } from "express-validator";
-import { ObjectId } from "mongodb";
+import { body } from "express-validator";
+import { paramObjectIdValidator } from "../../../shared/middlewares/shared.validators";
 
 const blogNameValidator = body('name')
   .isString().withMessage('Name should be string')
@@ -21,17 +21,8 @@ const blogWebsiteUrlValidator = body('websiteUrl')
   .matches(/^https:\/\/([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\/?$/)
   .withMessage('Website url should be a valid url');
 
-const blogIdValidator = param('id')
-  .custom((postId: string) => {
-    const isValidId = ObjectId.isValid(postId)
-    if (!isValidId) {
-      throw new Error('Invalid id param')
-    }
-    return true
-  })
-
 export const blogGetValidation = [
-  blogIdValidator
+  paramObjectIdValidator
 ]
 
 export const blogInputValidation = [
@@ -41,7 +32,7 @@ export const blogInputValidation = [
 ]
 
 export const blogUpdateValidation = [
-  blogIdValidator,
+  paramObjectIdValidator,
   blogNameValidator,
   blogDescrValidator,
   blogWebsiteUrlValidator,

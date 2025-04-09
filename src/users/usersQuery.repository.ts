@@ -1,8 +1,7 @@
 import { Filter, ObjectId } from "mongodb";
-import { UserDbModel, UserViewModel } from "../db/db-types";
 import { usersCollection } from "../db/mongoDb";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { GetUsersDto } from "./users.types";
+import { GetUsersDto, UserDbModel, UserViewModel } from "./users.types";
 
 export const usersQueryRepository = {
 

@@ -1,5 +1,5 @@
-import { body, param } from "express-validator";
-import { ObjectId } from "mongodb";
+import { body } from "express-validator";
+import { paramObjectIdValidator } from "../../../shared/middlewares/shared.validators";
 
 const postTitleValidator = body('title')
   .isString().withMessage('Title should be string')
@@ -20,17 +20,8 @@ const postContentValidator = body('content')
   .isLength({ max: 1000 })
   .withMessage('Content should be 1000 characters max');
 
-const postIdValidator = param('id')
-  .custom((postId: string) => {
-    const isValidId = ObjectId.isValid(postId)
-    if (!isValidId) {
-      throw new Error('Invalid id param')
-    }
-    return true
-  })
-
 export const postGetValidator = [
-  postIdValidator
+  paramObjectIdValidator
 ]
 
 export const postInputValidator = [
@@ -40,7 +31,7 @@ export const postInputValidator = [
 ]
 
 export const postUpdateValidator = [
-  postIdValidator,
+  paramObjectIdValidator,
   postTitleValidator,
   postDescrValidator,
   postContentValidator,

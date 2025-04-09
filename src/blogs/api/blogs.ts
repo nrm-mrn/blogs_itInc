@@ -1,19 +1,19 @@
 import { Response, Router } from "express";
-import { BlogInputModel, BlogPostInputModel, BlogViewModel, PostViewModel } from "../../db/db-types";
-import { authMiddleware } from "../../middlewares/auth.middleware";
-import { inputValidationResultMiddleware } from "../../middlewares/validationResult.middleware";
+import { baseAuthGuard } from "../../auth/guards/baseAuthGuard";
+import { inputValidationResultMiddleware } from "../../shared/middlewares/validationResult.middleware";
 import { ObjectId } from "mongodb";
 import { blogService } from "../blogs.service";
 import { postInputValidator } from "../../posts/api/middleware/posts.validators";
 import { blogQueryRepository } from "../blogsQuery.repository";
-import { GetBlogsQuery, GetBlogsDto, GetBlogsSanitizedQuery } from "../blogs.types";
+import { GetBlogsQuery, GetBlogsDto, GetBlogsSanitizedQuery, BlogInputModel, BlogViewModel } from "../blogs.types";
 import { APIErrorResult } from "../../shared/types/error.types";
 import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
 import { RequestWithBody, RequestWithParams, RequestWithParamsAndBody, RequestWithParamsAndQuery, RequestWithQuery } from "../../shared/types/requests.types";
-import { idToObjectId, querySanitizerChain } from "../../shared/middlewares/shared.sanitizers";
+import { idToObjectId, paginationQuerySanitizerChain } from "../../shared/middlewares/shared.sanitizers";
 import { IdType } from "../../shared/types/id.type";
 import { getBlogsSanitizerChain } from "./middleware/blogs.sanitizers";
 import { blogInputValidation, blogGetValidation, blogUpdateValidation } from "./middleware/blogs.validators";
+import { PostViewModel, BlogPostInputModel } from "../../posts/posts.types";
 
 
 export const blogsRouter = Router({})
@@ -32,7 +32,7 @@ blogsRouter.get('/',
   })
 
 blogsRouter.post('/',
-  authMiddleware,
+  baseAuthGuard,
   blogInputValidation,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<BlogInputModel>, res: Response<BlogViewModel | string>) => {
@@ -62,7 +62,7 @@ blogsRouter.get('/:id',
 blogsRouter.get('/:id/posts',
   blogGetValidation,
   inputValidationResultMiddleware,
-  querySanitizerChain,
+  paginationQuerySanitizerChain,
   idToObjectId,
   async (req: RequestWithParamsAndQuery<IdType, PagingQuery>, res: Response<PagedResponse<PostViewModel>>) => {
     const id = req.params.id as unknown as ObjectId
@@ -77,7 +77,7 @@ blogsRouter.get('/:id/posts',
 )
 
 blogsRouter.post('/:id/posts',
-  authMiddleware,
+  baseAuthGuard,
   blogGetValidation,
   postInputValidator,
   inputValidationResultMiddleware,
@@ -96,7 +96,7 @@ blogsRouter.post('/:id/posts',
 )
 
 blogsRouter.put('/:id',
-  authMiddleware,
+  baseAuthGuard,
   blogUpdateValidation,
   inputValidationResultMiddleware,
   idToObjectId,
@@ -112,7 +112,7 @@ blogsRouter.put('/:id',
   })
 
 blogsRouter.delete('/:id',
-  authMiddleware,
+  baseAuthGuard,
   idToObjectId,
   async (req: RequestWithParams<IdType>, res: Response) => {
     const id = req.params.id as unknown as ObjectId

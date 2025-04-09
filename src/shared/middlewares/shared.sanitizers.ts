@@ -28,7 +28,7 @@ const pageNumber = query('pageNumber')
 export const idToObjectId = param('id')
   .customSanitizer(id => new ObjectId(id))
 
-export const querySanitizerChain = [
+export const paginationQuerySanitizerChain = [
   sortBy,
   sortDirection,
   pageSize,

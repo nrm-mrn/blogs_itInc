@@ -1,6 +1,6 @@
 import { param, query } from "express-validator";
-import { SortDirection } from "../types/pagination.types";
 import { ObjectId } from "mongodb";
+import { SortDirection } from "./types/pagination.types";
 
 const sortBy = query('sortBy')
   .customSanitizer((sortBy: string | undefined) => {

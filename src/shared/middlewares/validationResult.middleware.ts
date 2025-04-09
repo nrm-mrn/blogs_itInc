@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { FieldValidationError, ValidationError, validationResult } from "express-validator";
-import { FieldError } from "../shared/types/error.types";
+import { FieldError } from "../types/error.types";
 
 const formatErrors = (error: ValidationError): FieldError => {
   const expressError = error as unknown as FieldValidationError

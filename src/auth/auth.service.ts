@@ -1,15 +1,36 @@
 import { usersRepository } from "../users/users.repository"
-import bcrypt from 'bcrypt'
-import { LoginDto } from "./auth.types";
+import { LoginDto, MeView } from "./auth.types";
+import { ObjectId } from "mongodb";
+import { usersQueryRepository } from "../users/usersQuery.repository";
+import { CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
+import { jwtService } from "./jwt.service";
+import { passwordHashService } from "./passHash.service";
 
 export const authService = {
-  async checkCredentials(credentials: LoginDto): Promise<boolean> {
-    const user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
-
-    const isValidPass = await bcrypt.compare(credentials.password, user.passwordHash);
-    if (isValidPass) {
-      return true
+  async checkCredentials(credentials: LoginDto): Promise<{ accessToken: string }> {
+    let user;
+    try {
+      user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
+      const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
+      if (isValidPass) {
+        return { accessToken: jwtService.createToken(user._id.toString()) }
+      }
+      throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
+    } catch (err) {
+      if (err instanceof CustomError) {
+        throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
+      } else {
+        throw new Error('Could not check user credentials')
+      }
     }
-    return false
+  },
+
+  async getUserInfo(id: ObjectId): Promise<{ data: MeView }> {
+    const user = await usersQueryRepository.getUserById(id);
+    if (!user) {
+      throw new Error('User id not found')
+    }
+    return { data: { email: user.email, login: user.login, userId: user.id.toString() } }
   }
 }

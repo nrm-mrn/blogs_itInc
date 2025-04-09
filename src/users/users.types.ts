@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
 
 export type GetUsersQuery = {
@@ -16,4 +17,23 @@ export type GetUsersDto = {
   pagination: PagingFilter;
 }
 
+export type UserDbModel = {
+  login: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
+export type UserViewModel = {
+  id: ObjectId;
+  login: string;
+  email: string;
+  createdAt: string;
+}
+
+export type UserInputModel = {
+  login: string;
+  password: string;
+  email: string;
+}
 
