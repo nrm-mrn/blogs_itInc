@@ -1,15 +1,16 @@
 import { usersRepository } from "../users/users.repository"
 import { LoginDto, MeView } from "./auth.types";
-import { ObjectId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { usersQueryRepository } from "../users/usersQuery.repository";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { jwtService } from "./jwt.service";
 import { passwordHashService } from "./passHash.service";
+import { UserDbModel } from "../users/users.types";
 
 export const authService = {
   async checkCredentials(credentials: LoginDto): Promise<{ accessToken: string }> {
-    let user;
+    let user: WithId<UserDbModel>;
     try {
       user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
       const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);

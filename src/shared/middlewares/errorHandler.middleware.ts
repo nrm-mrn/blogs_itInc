@@ -3,6 +3,7 @@ import { CustomError } from "../types/error.types";
 
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.message)
+  console.error(err.name)
   if (err instanceof CustomError) {
     if (err.errorObj) {
       res.status(err.statusCode).send(err.errorObj)
@@ -12,7 +13,7 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
       return
     }
   }
-  console.error(JSON.stringify(err, null, 2))
+  console.error(err.stack)
   res.status(500).send('Server exception')
   return
 }
