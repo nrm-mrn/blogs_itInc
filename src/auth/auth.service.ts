@@ -69,7 +69,7 @@ export const authService = {
 
     const userId = await usersRepository.createUser(user);
 
-    await nodemailerService.sendEmail(
+    nodemailerService.sendEmail(
       user.email,
       email,
     ).catch(err => console.error(`error sending email: ${err}`))
@@ -87,7 +87,7 @@ export const authService = {
     const user = await usersQueryRepository.getUserByEmailConfirmation(code);
 
     if (!user) {
-      throw new CustomError('User with provided code does not exist', HttpStatuses.BadRequest)
+      throw new CustomError('User with provided code does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'user with provided code does not exist' }] })
     }
 
     if (user.emailConfirmation.isConfirmed) {
@@ -105,7 +105,6 @@ export const authService = {
   },
 
   async resendConfirmation(email: string): Promise<void> {
-    console.log(`Looking for user ${email}`)
     const user = await usersQueryRepository.getUserByEmail(email);
     if (!user) {
       throw new CustomError('User with provided email does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'user with given email does not exist' }] })
@@ -119,7 +118,7 @@ export const authService = {
 
     await usersRepository.updateEmailConfirmation(email, newConfirmation);
 
-    await nodemailerService.sendEmail(
+    nodemailerService.sendEmail(
       email,
       emailTemplate,
     ).catch(err => console.error(`error sending email: ${err}`))
