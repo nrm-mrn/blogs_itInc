@@ -82,7 +82,7 @@ export const authService = {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     ).test(code);
     if (!isUuid) {
-      throw new CustomError('provided code is not a valid uuid', HttpStatuses.BadRequest)
+      throw new CustomError('provided code is not a valid uuid', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'invalid UUID' }] })
     }
     const user = await usersQueryRepository.getUserByEmailConfirmation(code);
 
@@ -122,5 +122,6 @@ export const authService = {
       email,
       emailTemplate,
     ).catch(err => console.error(`error sending email: ${err}`))
+    return
   }
 }
