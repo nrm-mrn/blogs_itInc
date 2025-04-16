@@ -35,6 +35,9 @@ export const nodemailerService = {
       },
       logger: true,
       debug: true,
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
     return transporter;
   },
