@@ -1,11 +1,12 @@
 import { Filter, ObjectId } from "mongodb";
 import { usersCollection } from "../db/mongoDb";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { GetUsersDto, UserDbModel, UserViewModel } from "./users.types";
+import { GetUsersDto, IUserDb, IUserView } from "./user.types";
+import { User } from "./user.entity";
 
 export const usersQueryRepository = {
 
-  getFilter(dto: GetUsersDto): Filter<UserDbModel> {
+  getFilter(dto: GetUsersDto): Filter<User> {
     let searchLogin;
     let searchEmail;
     if ("searchLoginTerm" in dto && dto.searchLoginTerm !== null) {
@@ -26,7 +27,7 @@ export const usersQueryRepository = {
     return {}
   },
 
-  async getAllUsers(dto: GetUsersDto): Promise<PagedResponse<UserViewModel>> {
+  async getAllUsers(dto: GetUsersDto): Promise<PagedResponse<IUserView>> {
     const filter = this.getFilter(dto)
     const paging = dto.pagination
     const users = await usersCollection
@@ -48,31 +49,51 @@ export const usersQueryRepository = {
     }
   },
 
-  async getUserById(id: ObjectId): Promise<UserViewModel | null> {
+  async getUserById(id: ObjectId): Promise<IUserView | null> {
     const user = await usersCollection.findOne({ _id: id })
     if (!user) {
       return null
     }
-    const { _id, ...rest } = user
-    return { id: _id, ...rest }
+    return {
+      id: user._id,
+      login: user.login,
+      email: user.email,
+      createdAt: user.createdAt
+    }
   },
 
-  async getUserByLogin(login: string): Promise<UserViewModel | null> {
+  async getUserByLogin(login: string): Promise<IUserView | null> {
     const user = await usersCollection.findOne({ login })
     if (!user) {
       return null
     }
-    const { _id, ...rest } = user
-    return { id: _id, ...rest }
+    return {
+      id: user._id,
+      login: user.login,
+      email: user.email,
+      createdAt: user.createdAt
+    }
   },
 
-  async getUserByEmail(email: string): Promise<UserViewModel | null> {
+  async getUserByEmail(email: string): Promise<IUserView | null> {
     const user = await usersCollection.findOne({ email })
     if (!user) {
       return null
     }
-    const { _id, ...rest } = user
-    return { id: _id, ...rest }
+    return {
+      id: user._id,
+      login: user.login,
+      email: user.email,
+      createdAt: user.createdAt
+    }
   },
+
+  async getUserByEmailConfirmation(code: string): Promise<IUserDb | null> {
+    const user = await usersCollection.findOne({ 'emailConfirmation.confirmationCode': code })
+    if (!user) {
+      return null
+    }
+    return user
+  }
 
 }

@@ -1,16 +1,16 @@
 import { ObjectId } from "mongodb";
-import { SETTINGS } from "../src/settings/settings";
-import { createUsers, loginUser, PostDto, req, testingDtosCreator, testSeeder } from "./test-helpers";
-import { blogsCollection, client, commentsCollection, postsCollection, runDb, usersCollection } from "../src/db/mongoDb";
-import { BlogViewModel } from "../src/blogs/blogs.types";
-import { PagedResponse } from "../src/shared/types/pagination.types";
-import { PostViewModel } from "../src/posts/posts.types";
-import { CommentInputModel, CommentViewModel } from "../src/comments/comments.types";
-import { UserViewModel } from "../src/users/users.types";
+import { SETTINGS } from "../../src/settings/settings";
+import { createUsers, loginUser, PostDto, req, testingDtosCreator, testSeeder } from "../test-helpers";
+import { blogsCollection, client, commentsCollection, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { BlogViewModel } from "../../src/blogs/blogs.types";
+import { PagedResponse } from "../../src/shared/types/pagination.types";
+import { PostViewModel } from "../../src/posts/posts.types";
+import { CommentInputModel, CommentViewModel } from "../../src/comments/comments.types";
+import { IUserView } from "../../src/users/user.types";
 
 
 describe('comments routes test', () => {
-  let users: Array<UserViewModel>;
+  let users: Array<IUserView>;
   let blogs: Array<BlogViewModel>;
   let posts: Array<PostViewModel>;
 

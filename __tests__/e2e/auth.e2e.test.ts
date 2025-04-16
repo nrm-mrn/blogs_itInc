@@ -1,6 +1,6 @@
-import { client, runDb, usersCollection } from "../src/db/mongoDb";
-import { SETTINGS } from "../src/settings/settings";
-import { createUser, loginUser, req, testingDtosCreator, UserDto } from "./test-helpers";
+import { client, runDb, usersCollection } from "../../src/db/mongoDb";
+import { SETTINGS } from "../../src/settings/settings";
+import { createUser, loginUser, req, testingDtosCreator, UserDto } from "../test-helpers";
 
 describe('auth tests', () => {
 

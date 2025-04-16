@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { Duration } from 'luxon'
 
 config()
 
@@ -16,4 +17,8 @@ export const SETTINGS = {
   SUPERUSER: process.env.SUPERUSER,
   JWT_SECRET: process.env.JWT_SECRET as string,
   JWT_TIME: +process.env.JWT_TIME! as number,
+  EMAIL: process.env.EMAIL as string,
+  EMAIL_PASS: process.env.EMAIL_PASS as string,
+  TEST_DOMAIN: process.env.TESD_DOMAIL || 'localhost',
+  EMAIL_EXPIRATION: Duration.fromObject({ seconds: 2 }),
 }

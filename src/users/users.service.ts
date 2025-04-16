@@ -3,11 +3,12 @@ import { usersQueryRepository } from "./usersQuery.repository";
 import { usersRepository } from "./users.repository";
 import { APIErrorResult, CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
-import { UserInputModel, UserViewModel, UserDbModel } from "./users.types";
+import { IUserView, UserInputModel } from "./user.types";
 import { passwordHashService } from "../auth/passHash.service";
+import { User } from "./user.entity";
 
 export const userService = {
-  async createUser(input: UserInputModel): Promise<UserViewModel> {
+  async createUser(input: UserInputModel): Promise<IUserView> {
     const uniqueLogin = await this.isLoginUnique(input.login)
     if (!uniqueLogin) {
       const error: APIErrorResult = {
@@ -27,18 +28,17 @@ export const userService = {
       throw new CustomError('Email already exists', HttpStatuses.BadRequest, error)
     }
 
-    const datetime = new Date();
-    const datetimeISO = datetime.toISOString();
     const hash = await passwordHashService.createHash(input.password);
-    const newUser: UserDbModel = {
-      createdAt: datetimeISO,
-      passwordHash: hash,
-      ...input
-    }
+    const newUser = new User(
+      input.login,
+      input.email,
+      hash
+    )
     const userId = await usersRepository.createUser(newUser)
 
     return { id: userId, login: newUser.login, email: newUser.email, createdAt: newUser.createdAt }
   },
+
 
   async isLoginUnique(login: string): Promise<boolean> {
     const loginRes = await usersQueryRepository.getUserByLogin(login)

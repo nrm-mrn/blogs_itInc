@@ -6,7 +6,7 @@ import { usersQueryRepository } from "../usersQuery.repository";
 import { userService } from "../users.service";
 import { APIErrorResult } from "../../shared/types/error.types";
 import { PagedResponse } from "../../shared/types/pagination.types";
-import { GetUsersQuery, GetUsersDto, GetUsersSanitizedQuery, UserInputModel, UserViewModel } from "../users.types";
+import { GetUsersQuery, GetUsersDto, GetUsersSanitizedQuery, UserInputModel, IUserView } from "../user.types";
 import { RequestWithBody, RequestWithParams, RequestWithQuery } from "../../shared/types/requests.types";
 import { IdType } from "../../shared/types/id.type";
 import { idToObjectId } from "../../shared/middlewares/shared.sanitizers";
@@ -19,7 +19,7 @@ export const usersRouter = Router({})
 usersRouter.get('/',
   baseAuthGuard,
   usersQuerySanChain,
-  async (req: RequestWithQuery<GetUsersQuery>, res: Response<PagedResponse<UserViewModel>>, next: NextFunction) => {
+  async (req: RequestWithQuery<GetUsersQuery>, res: Response<PagedResponse<IUserView>>, next: NextFunction) => {
     const { searchLoginTerm, searchEmailTerm, ...rest } = req.query as GetUsersSanitizedQuery;
     const getUsersDto: GetUsersDto = {
       searchLoginTerm: searchLoginTerm,
@@ -39,8 +39,8 @@ usersRouter.post('/',
   baseAuthGuard,
   userInputValidator,
   inputValidationResultMiddleware,
-  async (req: RequestWithBody<UserInputModel>, res: Response<UserViewModel | APIErrorResult>, next: NextFunction) => {
-    let user: UserViewModel;
+  async (req: RequestWithBody<UserInputModel>, res: Response<IUserView | APIErrorResult>, next: NextFunction) => {
+    let user: IUserView;
     try {
       user = await userService.createUser(req.body);
       res.status(201).send(user)

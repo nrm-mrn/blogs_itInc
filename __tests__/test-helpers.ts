@@ -1,14 +1,16 @@
 import { agent } from "supertest";
-import { app } from './../src/app'
+import { app } from '../src/app'
 import request from 'supertest';
 import { SETTINGS } from "../src/settings/settings";
-import { UserViewModel } from "../src/users/users.types";
 import { LoginDto } from "../src/auth/auth.types";
 import { BlogInputModel, BlogViewModel } from "../src/blogs/blogs.types";
 import { blogService } from "../src/blogs/blogs.service";
 import { PostInputModel, PostViewModel } from "../src/posts/posts.types";
 import { postsService } from "../src/posts/posts.service";
 import { ObjectId } from "mongodb";
+import { IUserView } from "../src/users/user.types";
+import { User } from "../src/users/user.entity";
+import { usersRepository } from "../src/users/users.repository";
 
 export const req = agent(app)
 
@@ -99,7 +101,7 @@ export const createUser = async (userDto?: UserDto) => {
 };
 
 export const createUsers = async (count: number) => {
-  const users: Array<UserViewModel> = [];
+  const users: Array<IUserView> = [];
 
   for (let i = 0; i <= count; i++) {
     const resp = await req
@@ -116,6 +118,11 @@ export const createUsers = async (count: number) => {
   }
   return users;
 };
+
+export const insertUser = async (user: User) => {
+  await usersRepository.createUser(user);
+  return
+}
 
 export const loginUser = async (loginDto?: LoginDto): Promise<{ accessToken: string }> => {
   const defaultUser = testingDtosCreator.createUserDto({})

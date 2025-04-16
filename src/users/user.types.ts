@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
+import { User } from "./user.entity";
 
 export type GetUsersQuery = {
   searchLoginTerm?: string;
@@ -17,14 +18,9 @@ export type GetUsersDto = {
   pagination: PagingFilter;
 }
 
-export type UserDbModel = {
-  login: string;
-  email: string;
-  passwordHash: string;
-  createdAt: string;
-}
+export interface IUserDb extends User { };
 
-export type UserViewModel = {
+export interface IUserView {
   id: ObjectId;
   login: string;
   email: string;

@@ -1,10 +1,11 @@
-import { blogsCollection, client, postsCollection, runDb, usersCollection } from "../src/db/mongoDb";
-import { userService } from "../src/users/users.service";
-import { SETTINGS } from "../src/settings/settings";
-import { PagedResponse, PagingQuery, SortDirection } from "../src/shared/types/pagination.types";
-import { GetUsersQuery, UserInputModel, UserViewModel } from "../src/users/users.types";
-import { req } from "./test-helpers";
-import { BlogViewModel } from "../src/blogs/blogs.types";
+import { blogsCollection, client, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { userService } from "../../src/users/users.service";
+import { SETTINGS } from "../../src/settings/settings";
+import { PagedResponse, PagingQuery, SortDirection } from "../../src/shared/types/pagination.types";
+import { GetUsersQuery, UserInputModel } from "../../src/users/user.types";
+import { req } from "../test-helpers";
+import { BlogViewModel } from "../../src/blogs/blogs.types";
+import { IUserView } from "../../src/users/user.types";
 
 describe('users tests', () => {
 
@@ -62,7 +63,7 @@ describe('users tests', () => {
       const res = await req.get(SETTINGS.PATHS.USERS)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const usersPage: PagedResponse<UserViewModel> = res.body
+      const usersPage: PagedResponse<IUserView> = res.body
       expect(usersPage.items.length).toBe(1);
       expect(usersPage.totalCount).toBe(1);
 
@@ -72,7 +73,7 @@ describe('users tests', () => {
       const res = await req.get(SETTINGS.PATHS.USERS)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const usersPage: PagedResponse<UserViewModel> = res.body
+      const usersPage: PagedResponse<IUserView> = res.body
       expect(usersPage.items.length).toBeGreaterThan(0);
       const originalTotal = usersPage.totalCount;
       const user = usersPage.items[0]
@@ -89,7 +90,7 @@ describe('users tests', () => {
       const res2 = await req.get(SETTINGS.PATHS.USERS)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const newUsersPage: PagedResponse<UserViewModel> = res2.body
+      const newUsersPage: PagedResponse<IUserView> = res2.body
       expect(newUsersPage.totalCount).toBe(originalTotal - 1)
 
       await req.delete(SETTINGS.PATHS.USERS + `/${user.id}`)
@@ -177,7 +178,7 @@ describe('users tests', () => {
       let rawRes = await req.get(SETTINGS.PATHS.USERS).query(query)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      let res2: PagedResponse<UserViewModel> = rawRes.body
+      let res2: PagedResponse<IUserView> = rawRes.body
       expect(res2.items.length).toBe(12)
 
       query = {
@@ -189,7 +190,7 @@ describe('users tests', () => {
       rawRes = await req.get(SETTINGS.PATHS.USERS).query(query)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const res3: PagedResponse<UserViewModel> = rawRes.body
+      const res3: PagedResponse<IUserView> = rawRes.body
       expect(res3.items.length).toBe(13)
     }, 20000)
   })

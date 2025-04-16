@@ -1,13 +1,13 @@
 import { ObjectId } from "mongodb";
-import { SETTINGS } from "../src/settings/settings";
-import { req } from "./test-helpers";
-import { blogsCollection, client, postsCollection, runDb } from "../src/db/mongoDb";
-import { blogService } from "../src/blogs/blogs.service";
-import { blogQueryRepository } from "../src/blogs/blogsQuery.repository";
-import { postsQueryRepository } from "../src/posts/postsQuery.repository";
-import { BlogViewModel, GetBlogsDto } from "../src/blogs/blogs.types";
-import { PagedResponse, SortDirection } from "../src/shared/types/pagination.types";
-import { PostViewModel, PostInputModel } from "../src/posts/posts.types";
+import { SETTINGS } from "../../src/settings/settings";
+import { req } from "../test-helpers";
+import { blogsCollection, client, postsCollection, runDb } from "../../src/db/mongoDb";
+import { blogService } from "../../src/blogs/blogs.service";
+import { blogQueryRepository } from "../../src/blogs/blogsQuery.repository";
+import { postsQueryRepository } from "../../src/posts/postsQuery.repository";
+import { BlogViewModel, GetBlogsDto } from "../../src/blogs/blogs.types";
+import { PagedResponse, SortDirection } from "../../src/shared/types/pagination.types";
+import { PostViewModel, PostInputModel } from "../../src/posts/posts.types";
 
 
 describe('posts routes tests', () => {
