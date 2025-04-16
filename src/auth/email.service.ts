@@ -14,7 +14,9 @@ export const nodemailerService = {
       to: email,
       subject: 'Email confirmation',
       html: template,
-    });
+    }).catch(err => { `Error sending email: ${err}` });
+
+    console.log(`Sent email`)
 
     return !!res
   },
@@ -31,6 +33,8 @@ export const nodemailerService = {
         user: SETTINGS.EMAIL,
         pass: SETTINGS.EMAIL_PASS,
       },
+      logger: true,
+      debug: true,
     });
     return transporter;
   },
