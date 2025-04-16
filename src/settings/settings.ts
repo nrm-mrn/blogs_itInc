@@ -20,5 +20,5 @@ export const SETTINGS = {
   EMAIL: process.env.EMAIL as string,
   EMAIL_PASS: process.env.EMAIL_PASS as string,
   TEST_DOMAIN: process.env.TEST_DOMAIN || 'localhost',
-  EMAIL_EXPIRATION: Duration.fromObject({ seconds: 10 }),
+  EMAIL_EXPIRATION: Duration.fromObject({ minutes: 10 }),
 }
