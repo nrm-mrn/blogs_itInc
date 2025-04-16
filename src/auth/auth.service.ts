@@ -105,6 +105,7 @@ export const authService = {
   },
 
   async resendConfirmation(email: string): Promise<void> {
+    console.log(`Looking for user ${email}`)
     const user = await usersQueryRepository.getUserByEmail(email);
     if (!user) {
       throw new CustomError('User with provided email does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'user with given email does not exist' }] })
