@@ -39,7 +39,7 @@ export const nodemailerService = {
     const transporter = this.emailTransporter()
     transporter.verify(function (error, success) {
       if (error) {
-        console.log(error);
+        console.log(`Email connection verification error: ${error}`);
       } else {
         console.log("Email server is ready");
       }
