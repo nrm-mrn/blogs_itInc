@@ -14,7 +14,7 @@ export const nodemailerService = {
       to: email,
       subject: 'Email confirmation',
       html: template,
-    }).catch(err => { `Error sending email: ${err}` });
+    });
 
     console.log(`Sent email`)
 
