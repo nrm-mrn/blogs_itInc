@@ -69,7 +69,7 @@ export const authService = {
 
     const userId = await usersRepository.createUser(user);
 
-    nodemailerService.sendEmail(
+    await nodemailerService.sendEmail(
       user.email,
       email,
     ).catch(err => console.error(`error sending email: ${err}`))
