@@ -118,7 +118,7 @@ export const authService = {
 
     await usersRepository.updateEmailConfirmation(email, newConfirmation);
 
-    nodemailerService.sendEmail(
+    await nodemailerService.sendEmail(
       email,
       emailTemplate,
     ).catch(err => console.error(`error sending email: ${err}`))
