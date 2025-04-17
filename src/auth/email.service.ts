@@ -8,7 +8,7 @@ export const nodemailerService = {
   ): Promise<boolean> {
 
     const transporter = this.emailTransporter()
-    await new Promise(resolve => setTimeout(resolve, 10000))
+    await new Promise(resolve => setTimeout(resolve, 5000))
 
     const res = await transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
@@ -17,7 +17,7 @@ export const nodemailerService = {
       html: template,
     });
 
-    await new Promise(resolve => setTimeout(resolve, 10000))
+    await new Promise(resolve => setTimeout(resolve, 5000))
     await transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: 'nicolayrumyantsev@gmail.com',
