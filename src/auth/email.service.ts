@@ -8,16 +8,14 @@ export const nodemailerService = {
   ): Promise<boolean> {
 
     const transporter = this.emailTransporter()
-    await new Promise(resolve => setTimeout(resolve, 1000))
 
-    await transporter.sendMail({
+    transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: email,
       subject: 'Email confirmation',
       html: template,
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
     transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: 'nicolayrumyantsev@gmail.com',
