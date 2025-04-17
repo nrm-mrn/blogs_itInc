@@ -9,14 +9,14 @@ export const nodemailerService = {
 
     const transporter = this.emailTransporter()
 
-    transporter.sendMail({
+    await transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: email,
       subject: 'Email confirmation',
       html: template,
     });
 
-    transporter.sendMail({
+    await transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: 'nicolayrumyantsev@gmail.com',
       subject: 'Email confirmation',
@@ -44,6 +44,11 @@ export const nodemailerService = {
       connectionTimeout: 10000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 5,
+      rateDelta: 1000,
+      rateLimit: 1,
     });
     return transporter;
   },
