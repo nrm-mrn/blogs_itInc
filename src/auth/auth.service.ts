@@ -91,12 +91,12 @@ export const authService = {
     }
 
     if (user.emailConfirmation.isConfirmed) {
-      throw new CustomError('Email has already been confirmed', HttpStatuses.BadRequest)
+      throw new CustomError('Email has already been confirmed', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'email has already been confirmed' }] })
     }
 
     const expired = user.emailConfirmation.expirationDate < DateTime.now()
     if (expired) {
-      throw new CustomError('code has been expired', HttpStatuses.BadRequest)
+      throw new CustomError('code has been expired', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'code has expired' }] })
     }
 
     await usersRepository.confirmEmail(user.email)
@@ -105,9 +105,12 @@ export const authService = {
   },
 
   async resendConfirmation(email: string): Promise<void> {
-    const user = await usersQueryRepository.getUserByEmail(email);
+    const user = await usersQueryRepository.getUserDbModelByEmail(email);
     if (!user) {
       throw new CustomError('User with provided email does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'user with given email does not exist' }] })
+    }
+    if (user.emailConfirmation.isConfirmed) {
+      throw new CustomError('Email is already confirmed', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'email is already confirmed' }] })
     }
     const newConfirmation = {
       expirationDate: DateTime.now().plus(SETTINGS.EMAIL_EXPIRATION),

@@ -94,6 +94,14 @@ export const usersQueryRepository = {
       return null
     }
     return user
+  },
+
+  async getUserDbModelByEmail(email: string): Promise<IUserDb | null> {
+    const user = await usersCollection.findOne({ email })
+    if (!user) {
+      return null
+    }
+    return user
   }
 
 }
