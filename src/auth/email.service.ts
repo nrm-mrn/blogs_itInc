@@ -9,22 +9,14 @@ export const nodemailerService = {
 
     const transporter = this.emailTransporter()
 
-    await transporter.sendMail({
+    const res = await transporter.sendMail({
       from: 'blogsmailerserv@mail.ru',
       to: email,
       subject: 'Email confirmation',
       html: template,
     });
 
-    await transporter.sendMail({
-      from: 'blogsmailerserv@mail.ru',
-      to: 'nicolayrumyantsev@gmail.com',
-      subject: 'Email confirmation',
-      html: `sent email to ${email}\n` + template,
-    });
-
-
-    return true
+    return !!res
   },
 
   emailTransporter() {
