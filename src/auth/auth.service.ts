@@ -1,5 +1,5 @@
 import { usersRepository } from "../users/users.repository"
-import { LoginDto, MeView } from "./auth.types";
+import { AuthSuccess, LoginDto, MeView } from "./auth.types";
 import { ObjectId, WithId } from "mongodb";
 import { usersQueryRepository } from "../users/usersQuery.repository";
 import { APIErrorResult, CustomError } from "../shared/types/error.types";
@@ -10,20 +10,22 @@ import { IUserDb, UserInputModel } from "../users/user.types";
 import { User } from "../users/user.entity";
 import { nodemailerService } from "./email.service";
 import { emailTemplates } from "./email.templates";
-import { randomUUID } from "crypto";
 import { SETTINGS } from "../settings/settings";
 import { DateTime } from 'luxon'
+import { RefreshToken } from "./refreshToken.entity";
+import { rTokensRepository } from "./auth.repository";
 
 export const authService = {
-  async checkCredentials(credentials: LoginDto): Promise<{ accessToken: string }> {
+
+  async checkCredentials(credentials: LoginDto): Promise<AuthSuccess> {
     let user: WithId<IUserDb>;
+    let isValidPass: boolean;
     try {
       user = await usersRepository.getUserByLoginOrEmail(credentials.loginOrEmail);
-      const isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
-      if (isValidPass) {
-        return { accessToken: jwtService.createToken(user._id.toString()) }
+      isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
+      if (!isValidPass) {
+        throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
       }
-      throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
     } catch (err) {
       if (err instanceof CustomError) {
         throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
@@ -31,6 +33,10 @@ export const authService = {
         throw new Error(`Could not check user credentials: ${err}`)
       }
     }
+    const accessToken = jwtService.createAccessToken(user._id.toString())
+    const refreshToken = new RefreshToken(user._id.toString())
+    await rTokensRepository.saveRefreshToken(refreshToken)
+    return { accessToken, refreshToken: refreshToken.token }
   },
 
 
@@ -126,5 +132,38 @@ export const authService = {
       emailTemplate,
     ).catch(err => console.error(`error sending email: ${err}`))
     return
+  },
+
+  async reissueTokensPair(token: string): Promise<AuthSuccess> {
+    //NOTE: should always work since guard check passed
+    const payload = jwtService.decodeToken(token) as { userId: string, jti: string }
+
+    const tokenDbEntry = await rTokensRepository.getRefreshToken(token);
+    if (!tokenDbEntry) {
+      throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
+    }
+    if (tokenDbEntry.expiration < DateTime.utc()) {
+      await rTokensRepository.deleteRefreshToken(token)
+      throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
+    }
+
+    const newRToken = new RefreshToken(payload.userId);
+    const accessToken = jwtService.createAccessToken(payload.userId)
+    const pr1 = rTokensRepository.deleteRefreshToken(token);
+    const pr2 = rTokensRepository.saveRefreshToken(newRToken)
+    await Promise.all([pr1, pr2])
+    return { accessToken, refreshToken: newRToken.token }
+  },
+
+  async revokeRefreshToken(token: string): Promise<void> {
+    const tokenDbEntry = await rTokensRepository.getRefreshToken(token);
+    if (!tokenDbEntry) {
+      throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
+    }
+    if (tokenDbEntry.expiration < DateTime.utc()) {
+      await rTokensRepository.deleteRefreshToken(token)
+      throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
+    }
+    return await rTokensRepository.deleteRefreshToken(token);
   }
 }

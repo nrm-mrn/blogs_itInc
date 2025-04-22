@@ -1,10 +1,21 @@
 import jwt, { Secret } from 'jsonwebtoken'
 import { SETTINGS } from '../settings/settings'
+import { randomUUID } from 'crypto'
 
 export const jwtService = {
-  createToken(userId: string): string {
+  createAccessToken(userId: string): string {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
     return jwt.sign({ userId }, secret, { expiresIn: SETTINGS.JWT_TIME })
+  },
+
+  createRefreshToken(userId: string): string {
+    const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
+    const jti = this.generateUUID()
+    return jwt.sign({ userId, jti }, secret, { expiresIn: SETTINGS.REFRESHT_TIME })
+  },
+
+  generateUUID(): string {
+    return randomUUID()
   },
 
   decodeToken(token: string) {
@@ -16,9 +27,17 @@ export const jwtService = {
     }
   },
 
-  verifyToken(token: string): { userId: string } | null {
+  verifyAccessToken(token: string): { userId: string } | null {
     try {
       return jwt.verify(token, Buffer.from(SETTINGS.JWT_SECRET)) as { userId: string };
+    } catch (err) {
+      return null
+    }
+  },
+
+  verifyRefreshToken(token: string): { userId: string, jti: string } | null {
+    try {
+      return jwt.verify(token, Buffer.from(SETTINGS.JWT_SECRET)) as { userId: string, jti: string };
     } catch (err) {
       return null
     }

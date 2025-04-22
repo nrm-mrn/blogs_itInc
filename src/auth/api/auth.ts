@@ -1,31 +1,77 @@
-import { NextFunction, Response, Router } from "express";
-import { RequestWithBody, RequestWithUserId } from "../../shared/types/requests.types";
+import { NextFunction, Request, Response, Router } from "express";
+import { RequestWithBody, RequestWithCookies, RequestWithUserId } from "../../shared/types/requests.types";
 import { loginInputValidation, userEmailValidator, userRegistrationValidator } from "./middleware/auth.validators";
-import { LoginBody, LoginDto, MeView } from "../auth.types";
+import { LoginBody, LoginDto, MeView, RefreshTokenRequest } from "../auth.types";
 import { authService } from "../auth.service";
 import { jwtGuard } from "../guards/jwtGuard";
 import { ObjectId } from "mongodb";
 import { HttpStatuses } from "../../shared/types/httpStatuses";
 import { inputValidationResultMiddleware } from "../../shared/middlewares/validationResult.middleware";
 import { UserInputModel } from "../../users/user.types";
+import { refreshTokenGuard } from "../guards/refreshTGuard";
+import { SETTINGS } from "../../settings/settings";
 
 
 export const authRouter = Router({})
 
+//TODO: add refresh token to cookie
 authRouter.post('/login',
   loginInputValidation,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<LoginBody>, res: Response<{ accessToken: string }>, next: NextFunction) => {
     const creds: LoginDto = req.body;
     try {
-      const token = await authService.checkCredentials(creds)
-      res.status(HttpStatuses.Success).send(token)
+      const { accessToken, refreshToken } = await authService.checkCredentials(creds)
+      res.status(HttpStatuses.Success)
+        .cookie('refreshToken', refreshToken,
+          {
+            httpOnly: true,
+            secure: SETTINGS.ENV === 'testing' ? false : true,
+          })
+        .send({ accessToken })
       return
     } catch (err) {
       next(err)
       return
     }
-  })
+  }
+)
+
+authRouter.post('/refresh-token',
+  refreshTokenGuard,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies.refreshToken as string
+    try {
+      const { refreshToken, accessToken } = await authService.reissueTokensPair(token)
+      res.status(HttpStatuses.Success)
+        .cookie('refreshToken', refreshToken,
+          {
+            httpOnly: true,
+            secure: SETTINGS.ENV === 'testing' ? false : true,
+          })
+        .send({ accessToken })
+      return
+    } catch (err) {
+      next(err)
+      return
+    }
+  }
+)
+
+authRouter.post('/logout',
+  refreshTokenGuard,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies.refreshToken as string
+    try {
+      await authService.revokeRefreshToken(token)
+      res.sendStatus(HttpStatuses.NoContent)
+      return
+    } catch (err) {
+      next(err)
+      return
+    }
+  }
+)
 
 authRouter.get('/me',
   jwtGuard,

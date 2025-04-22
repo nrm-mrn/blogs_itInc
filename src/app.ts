@@ -8,11 +8,14 @@ import { authRouter } from './auth/api/auth';
 import { SETTINGS } from './settings/settings';
 import { errorHandler } from './shared/middlewares/errorHandler.middleware';
 import { commentsRouter } from './comments/api/comments';
+import cookieParser from 'cookie-parser';
 
 export const app = express()
 
 app.use(express.json());
 app.use(cors())
+app.use(cookieParser())
+
 app.use(SETTINGS.PATHS.BLOGS, blogsRouter);
 app.use(SETTINGS.PATHS.POSTS, postsRouter);
 app.use(SETTINGS.PATHS.USERS, usersRouter);

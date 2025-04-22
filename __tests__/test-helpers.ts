@@ -1,6 +1,5 @@
 import { agent } from "supertest";
 import { app } from '../src/app'
-import request from 'supertest';
 import { SETTINGS } from "../src/settings/settings";
 import { LoginDto } from "../src/auth/auth.types";
 import { BlogInputModel, BlogViewModel } from "../src/blogs/blogs.types";

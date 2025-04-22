@@ -16,7 +16,7 @@ export const jwtGuard = (req: RequestWithUserId<{ id: string }>, res: Response, 
     return
   }
 
-  const payload = jwtService.verifyToken(token)
+  const payload = jwtService.verifyAccessToken(token)
   if (payload) {
     const { userId } = payload;
     req.user = { id: userId } as IdType;

@@ -4,6 +4,9 @@ declare global {
   declare namespace Express {
     export interface Request {
       user: IdType | undefined;
+      cookies: {
+        refreshToken?: string
+      }
     }
   }
 }
