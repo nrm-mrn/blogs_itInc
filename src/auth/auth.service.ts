@@ -142,7 +142,7 @@ export const authService = {
     if (!tokenDbEntry) {
       throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
     }
-    if (tokenDbEntry.expiration < DateTime.utc()) {
+    if (DateTime.fromJSDate(tokenDbEntry.expiration) < DateTime.utc()) {
       await rTokensRepository.deleteRefreshToken(token)
       throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
     }
@@ -160,7 +160,7 @@ export const authService = {
     if (!tokenDbEntry) {
       throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
     }
-    if (tokenDbEntry.expiration < DateTime.utc()) {
+    if (DateTime.fromJSDate(tokenDbEntry.expiration) < DateTime.utc()) {
       await rTokensRepository.deleteRefreshToken(token)
       throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
     }

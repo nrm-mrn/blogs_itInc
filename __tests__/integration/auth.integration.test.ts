@@ -1,14 +1,16 @@
 import { ObjectId, UUID } from "mongodb";
 import { authService } from "../../src/auth/auth.service";
 import { nodemailerService } from "../../src/auth/email.service";
-import { client, rTokensCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { client, createIndexes, rTokensCollection, runDb, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { createUser, insertUser, loginUser, req, testingDtosCreator, testSeeder, UserDto } from "../test-helpers";
 import { User } from "../../src/users/user.entity";
-import { DateTime } from "luxon";
+import { DateTime, Duration } from "luxon";
 import { usersQueryRepository } from "../../src/users/usersQuery.repository";
 import { randomUUID } from "crypto";
 import { userService } from "../../src/users/users.service";
+import { RefreshToken } from "../../src/auth/refreshToken.entity";
+import { rTokensRepository } from "../../src/auth/auth.repository";
 
 describe('auth integration tests', () => {
   beforeAll(async () => {
@@ -138,6 +140,11 @@ describe('auth integration tests', () => {
   })
 
   describe('refresh token invalidation', () => {
+    beforeAll(async () => {
+      await rTokensCollection.drop()
+      await createIndexes()
+    })
+
     nodemailerService.sendEmail = jest
       .fn()
       .mockImplementation(
@@ -173,6 +180,25 @@ describe('auth integration tests', () => {
       rTokenDb = await rTokensCollection.findOne({ token: tokens.refreshToken })
       expect(rTokenDb).toBeNull()
     })
+
+    it.skip('token should be deleted from db when expired', async () => {
+      const userId = new ObjectId()
+      const token = new RefreshToken(userId.toString())
+      token.expiration = DateTime.utc().plus(Duration.fromMillis(500)).toJSDate()
+      await rTokensRepository.saveRefreshToken(token);
+
+      //check it is in db
+      let dbEntry = await rTokensRepository.getRefreshToken(token.token)
+      expect(dbEntry).not.toBeNull()
+
+      //mongo runs deletion job only once in 60 second, so have to wait long
+      //in order to check it
+      await new Promise(resolve => setTimeout(resolve, 65000))
+
+      //check it is not in db
+      dbEntry = await rTokensRepository.getRefreshToken(token.token)
+      expect(dbEntry).toBeNull()
+    }, 70000)
   })
 
 }

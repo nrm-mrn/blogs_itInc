@@ -22,10 +22,8 @@ export async function runDb(url: string): Promise<boolean> {
   commentsCollection = db.collection<CommentDbModel>(SETTINGS.PATHS.COMMENTS);
   usersCollection = db.collection<IUserDb>(SETTINGS.PATHS.USERS);
   rTokensCollection = db.collection<IRTokenDb>(SETTINGS.PATHS.RTOKEN);
-  rTokensCollection.createIndex(
-    { "expiration": 1 },
-    { expireAfterSeconds: 0 }
-  )
+
+  await createIndexes()
 
   try {
     await client.connect();
@@ -36,5 +34,12 @@ export async function runDb(url: string): Promise<boolean> {
     await client.close()
     return false
   }
+}
+
+export async function createIndexes() {
+  await rTokensCollection.createIndex(
+    { "expiration": 1 },
+    { expireAfterSeconds: 0 }
+  )
 
 }

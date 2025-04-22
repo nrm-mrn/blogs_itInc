@@ -7,13 +7,13 @@ export class RefreshToken {
   userId: ObjectId;
   token: string;
   createdAt: string;
-  expiration: DateTime;
+  expiration: Date;
   constructor(userId: string) {
     this.userId = new ObjectId(userId);
     this.token = jwtService.createRefreshToken(userId);
     this.createdAt = DateTime.now().toISO();
     this.expiration = DateTime
       .utc()
-      .plus(Duration.fromMillis(SETTINGS.REFRESHT_TIME * 1000));
+      .plus(Duration.fromMillis(SETTINGS.REFRESHT_TIME * 1000)).toJSDate()
   }
 }
