@@ -5,13 +5,13 @@ import { randomUUID } from 'crypto'
 export const jwtService = {
   createAccessToken(userId: string): string {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
-    return jwt.sign({ userId }, secret, { expiresIn: SETTINGS.JWT_TIME })
+    return jwt.sign({ userId }, secret, { expiresIn: `${SETTINGS.JWT_TIME}ms` })
   },
 
   createRefreshToken(userId: string): string {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
     const jti = this.generateUUID()
-    return jwt.sign({ userId, jti }, secret, { expiresIn: SETTINGS.REFRESHT_TIME })
+    return jwt.sign({ userId, jti }, secret, { expiresIn: `${SETTINGS.REFRESHT_TIME}ms` })
   },
 
   generateUUID(): string {

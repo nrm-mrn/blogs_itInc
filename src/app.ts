@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { blogsRouter } from './blogs/api/blogs';
 import { postsRouter } from './posts/api/posts';
 import cors from 'cors';
-import { blogsCollection, postsCollection, usersCollection } from './db/mongoDb';
+import { blogsCollection, createIndexes, postsCollection, rTokensCollection, usersCollection } from './db/mongoDb';
 import { usersRouter } from './users/api/users';
 import { authRouter } from './auth/api/auth';
 import { SETTINGS } from './settings/settings';
@@ -26,6 +26,8 @@ app.delete('/testing/all-data', async (req: Request, res: Response) => {
   await postsCollection.drop();
   await blogsCollection.drop();
   await usersCollection.drop()
+  await rTokensCollection.drop()
+  await createIndexes()
   res.sendStatus(204);
   return
 })
