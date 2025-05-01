@@ -42,9 +42,4 @@ app.get('/', (req: Request, res: Response) => {
   return
 })
 
-app.get('/testingError', (req: Request, res: Response) => {
-  throw new Error('Test server error')
-  return
-})
-
 app.use(errorHandler)

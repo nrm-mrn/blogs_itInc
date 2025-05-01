@@ -9,10 +9,10 @@ export class DeviceAuthSession {
   expiration: Date;
   ip: string;
   title: string; //NOTE: user-agent header
-  constructor(id: ObjectId, userId: string, iat: string, ip: string, title: string) {
+  constructor(id: ObjectId, userId: string, iat: number, ip: string, title: string) {
     this._id = id;
     this.userId = userId;
-    this.lastActiveDate = iat
+    this.lastActiveDate = new Date(iat).toISOString();
     this.ip = ip
     this.title = title
     this.expiration = DateTime

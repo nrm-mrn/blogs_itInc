@@ -18,36 +18,39 @@ export const sessionsService = {
     return sessionsRepository.saveSession(session);
   },
 
-  async getSession(deviceId: string, iat: string): Promise<ISessionDb | null> {
-    return sessionsRepository.getSession(new ObjectId(deviceId), iat);
+  async getSession(deviceId: string, iat: number): Promise<ISessionDb | null> {
+    const lastActiveDate = new Date(Number(iat)).toISOString();
+    return sessionsRepository.getSession(new ObjectId(deviceId), lastActiveDate);
   },
 
-  async refreshSession(deviceId: string, iat: string): Promise<void> {
+  async refreshSession(deviceId: string, iat: number): Promise<void> {
+    const lastActiveDate = new Date(Number(iat)).toISOString();
     return sessionsRepository.refreshSession(
       new ObjectId(deviceId),
-      iat,
+      lastActiveDate,
     )
   },
 
   async logout(token: string): Promise<void> {
     const payload = jwtService.verifyRefreshToken(token)!
     //NOTE: check that refresh token session is active
+    const lastActiveDate = new Date(payload.iat).toISOString();
     const session = await sessionsRepository
-      .getSession(new ObjectId(payload.deviceId), payload.iat);
+      .getSession(new ObjectId(payload.deviceId), lastActiveDate);
     if (!session) {
       throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
     }
-    return sessionsRepository.deleteSession(payload.iat);
+    return sessionsRepository.deleteSession(lastActiveDate);
   },
 
   async deleteAnotherSession(token: string, deviceToDelete: string): Promise<void> {
     const payload = jwtService.verifyRefreshToken(token)!;
-    const iat = payload.iat
     const deviceId = new ObjectId(payload.deviceId)
 
     //NOTE: check that refresh token session is active
+    const lastActiveDate = new Date(payload.iat).toISOString();
     const session = await sessionsRepository
-      .getSession(deviceId, iat);
+      .getSession(deviceId, lastActiveDate);
     if (!session) {
       throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
     }
@@ -66,14 +69,15 @@ export const sessionsService = {
   async deleteOtherSessions(token: string): Promise<void> {
     const payload = jwtService.verifyRefreshToken(token)!
     const deviceId = new ObjectId(payload.deviceId)
+    const lastActiveDate = new Date(payload.iat).toISOString();
 
     const session = await sessionsRepository
-      .getSession(deviceId, payload.iat);
+      .getSession(deviceId, lastActiveDate);
     if (!session) {
       throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
     }
     return sessionsRepository.deleteOtherSessions(
-      payload.iat,
+      lastActiveDate,
       payload.userId,
     );
   }

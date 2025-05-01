@@ -24,18 +24,18 @@ export const sessionsRepository = {
     throw new Error('Failed to delete sessions, operation not acknowledged by db')
   },
 
-  async deleteSession(iat: string): Promise<void> {
+  async deleteSession(lastActiveDate: string): Promise<void> {
     const result = await sessionsCollection
-      .deleteOne({ lastActiveDate: iat })
+      .deleteOne({ lastActiveDate })
     if (result.acknowledged) {
       return;
     }
     throw new Error('Failed to delete the session, operation not acknowledged by db')
   },
 
-  async getSession(deviceId: ObjectId, iat: string): Promise<ISessionDb | null> {
+  async getSession(deviceId: ObjectId, lastActiveDate: string): Promise<ISessionDb | null> {
     return sessionsCollection
-      .findOne({ _id: deviceId, lastActiveDate: iat })
+      .findOne({ _id: deviceId, lastActiveDate })
   },
 
   //WARN: Unsafe without checking iat of the token presenter
@@ -44,10 +44,10 @@ export const sessionsRepository = {
       .findOne({ _id: deviceId })
   },
 
-  async refreshSession(deviceId: ObjectId, iat: string): Promise<void> {
+  async refreshSession(deviceId: ObjectId, lastActiveDate: string): Promise<void> {
     const res = await sessionsCollection.updateOne(
       { _id: deviceId, },
-      { $set: { lastActiveDate: iat } })
+      { $set: { lastActiveDate } })
     if (res.modifiedCount === 1) {
       return;
     }

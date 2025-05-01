@@ -40,7 +40,7 @@ export interface CreateRefreshTokenDto {
 }
 
 export interface RTokenPayload {
-  iat: string,
+  iat: number,
   deviceId: string,
   userId: string,
 }

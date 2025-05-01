@@ -8,11 +8,11 @@ export const jwtService = {
     return jwt.sign({ userId }, secret, { expiresIn: `${SETTINGS.JWT_TIME}ms` })
   },
 
-  createRefreshToken(input: CreateRefreshTokenDto): { token: string, iat: string } {
+  createRefreshToken(input: CreateRefreshTokenDto): { token: string, iat: number } {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
     const iat = Date.now()
     const token = jwt.sign({ iat, ...input }, secret, { expiresIn: `${SETTINGS.REFRESHT_TIME}ms` })
-    return { token, iat: iat.toString() }
+    return { token, iat }
   },
 
   decodeToken(token: string) {
@@ -42,7 +42,7 @@ export const jwtService = {
       return {
         deviceId: payload.deviceId,
         userId: payload.userId,
-        iat: payload.iat.toString(),
+        iat: payload.iat,
       }
     } catch (err) {
       return null

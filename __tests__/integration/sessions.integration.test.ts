@@ -1,14 +1,11 @@
-import { ObjectId } from "mongodb";
 import { authService } from "../../src/auth/auth.service";
 import { nodemailerService } from "../../src/auth/email.service";
 import { client, createIndexes, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, insertUser, testingDtosCreator } from "../test-helpers";
-import { User } from "../../src/users/user.entity";
-import { DateTime } from "luxon";
+import { createUser, testingDtosCreator } from "../test-helpers";
 import { LoginDto } from "../../src/auth/auth.types";
 import { jwtService } from "../../src/auth/jwt.service";
-import { IDeviceView, ISessionDb } from "../../src/security/session.types";
+import { ISessionDb } from "../../src/security/session.types";
 import { sessionsService } from "../../src/security/sessions.service";
 
 describe('sessions integration tests', () => {
@@ -56,13 +53,13 @@ describe('sessions integration tests', () => {
     const tokens2 = await authService.checkCredentials(loginDto);
     const payload2 = jwtService.verifyRefreshToken(tokens2.refreshToken)
 
-    const session1: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: payload1?.iat }) as ISessionDb
-    expect(session1.lastActiveDate).toEqual(payload1?.iat)
+    const session1: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: new Date(payload1!.iat).toISOString() }) as ISessionDb
+    expect(session1.lastActiveDate).toEqual(new Date(payload1!.iat).toISOString())
     const sessionView: ISessionDb | null = await sessionsService.getSession(payload1?.deviceId!, payload1?.iat!)
     expect(sessionView?.lastActiveDate).toEqual(session1.lastActiveDate)
 
-    const session2: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: payload2?.iat }) as ISessionDb
-    expect(session2.lastActiveDate).toEqual(payload2?.iat)
+    const session2: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: new Date(payload2!.iat).toISOString() }) as ISessionDb
+    expect(session2.lastActiveDate).toEqual(new Date(payload2!.iat).toISOString())
 
     expect(session1.userId).toEqual(session2.userId);
     expect(session1._id).not.toEqual(session2._id)
@@ -79,12 +76,12 @@ describe('sessions integration tests', () => {
     }
     const tokens = await authService.checkCredentials(loginDto)
     const payload = jwtService.verifyRefreshToken(tokens.refreshToken)
-    let session = await sessionsCollection.findOne({ lastActiveDate: payload?.iat })
+    let session = await sessionsCollection.findOne({ lastActiveDate: new Date(payload!.iat).toISOString() })
     expect(session).not.toBeNull()
 
     await sessionsService.logout(tokens.refreshToken);
 
-    session = await sessionsCollection.findOne({ lastActiveDate: payload?.iat })
+    session = await sessionsCollection.findOne({ lastActiveDate: new Date(payload!.iat).toISOString() })
     expect(session).toBeNull()
   })
 

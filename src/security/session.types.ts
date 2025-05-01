@@ -12,7 +12,7 @@ export interface ISessionDb extends DeviceAuthSession { };
 export interface CreateSessionDto {
   deviceId: string,
   userId: string,
-  iat: string,
+  iat: number,
   ip: string,
   title: string,
 }
