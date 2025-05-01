@@ -18,7 +18,7 @@ export const requestsLimiter = async (req: Request, res: Response, next: NextFun
     return;
   }
   const newRequest: CreateRequestDto = { ip, URL };
-  await apiRequestService.saveRequest(newRequest).catch(err => {
+  apiRequestService.saveRequest(newRequest).catch(err => {
     throw new Error(`Could not save request: ${err}`)
   })
   next();
