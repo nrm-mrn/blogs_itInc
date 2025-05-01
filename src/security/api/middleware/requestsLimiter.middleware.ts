@@ -13,7 +13,7 @@ export const requestsLimiter = async (req: Request, res: Response, next: NextFun
     URL,
     timeLimit
   )
-  if (count > 5) {
+  if (count > 4) {
     res.sendStatus(429);
     return;
   }

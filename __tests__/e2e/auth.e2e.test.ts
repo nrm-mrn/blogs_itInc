@@ -172,10 +172,10 @@ describe('auth e2e tests', () => {
       await Promise.all(results);
 
       for (let i = 0; i < 6; i++) {
-        if (i < 5) {
+        if (i < 4) {
           results[i].expect(401);
         }
-        if (i === 5) {
+        if (i === 4) {
           results[i].expect(429);
         }
       }
