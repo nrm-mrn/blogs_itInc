@@ -1,4 +1,4 @@
-import { RefreshToken } from "./refreshToken.entity";
+import { DeviceAuthSession } from "../security/session.entity";
 
 export type LoginBody = {
   loginOrEmail: string;
@@ -8,6 +8,8 @@ export type LoginBody = {
 export type LoginDto = {
   loginOrEmail: string;
   password: string;
+  ip: string;
+  title: string;
 }
 
 export type LoginInputModel = {
@@ -26,10 +28,19 @@ export interface AuthSuccess {
   refreshToken: string;
 }
 
-export interface IRTokenDb extends RefreshToken { }
-
 export type RefreshTokenRequest = {
   cookies: {
     refreshToken: string
   }
+}
+
+export interface CreateRefreshTokenDto {
+  deviceId: string,
+  userId: string
+}
+
+export interface RTokenPayload {
+  iat: string,
+  deviceId: string,
+  userId: string,
 }

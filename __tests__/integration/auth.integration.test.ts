@@ -1,16 +1,13 @@
-import { ObjectId, UUID } from "mongodb";
+import { ObjectId } from "mongodb";
 import { authService } from "../../src/auth/auth.service";
 import { nodemailerService } from "../../src/auth/email.service";
-import { client, createIndexes, rTokensCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { client, runDb, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, insertUser, loginUser, req, testingDtosCreator, testSeeder, UserDto } from "../test-helpers";
+import { createUser, insertUser, testingDtosCreator } from "../test-helpers";
 import { User } from "../../src/users/user.entity";
-import { DateTime, Duration } from "luxon";
+import { DateTime } from "luxon";
 import { usersQueryRepository } from "../../src/users/usersQuery.repository";
 import { randomUUID } from "crypto";
-import { userService } from "../../src/users/users.service";
-import { RefreshToken } from "../../src/auth/refreshToken.entity";
-import { rTokensRepository } from "../../src/auth/auth.repository";
 
 describe('auth integration tests', () => {
   beforeAll(async () => {
@@ -138,69 +135,5 @@ describe('auth integration tests', () => {
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(false)
     });
   })
-
-  describe('refresh token invalidation', () => {
-    beforeAll(async () => {
-      await rTokensCollection.drop()
-      await createIndexes()
-    })
-
-    nodemailerService.sendEmail = jest
-      .fn()
-      .mockImplementation(
-        (email: string, template: string) =>
-          Promise.resolve(true)
-      );
-
-    it('should delete old token when issuing new one', async () => {
-      const { login, pass, email } = testingDtosCreator.createUserDto({});
-      await createUser();
-      const tokens1 = await authService.checkCredentials({ loginOrEmail: login, password: pass })
-      let rTokenDb = await rTokensCollection.findOne({ token: tokens1.refreshToken })
-      expect(rTokenDb).not.toBeNull()
-
-      const tokens2 = await authService.reissueTokensPair(tokens1.refreshToken);
-
-      rTokenDb = await rTokensCollection.findOne({ token: tokens1.refreshToken })
-      expect(rTokenDb).toBeNull()
-
-      rTokenDb = await rTokensCollection.findOne({ token: tokens2.refreshToken })
-      expect(tokens2.refreshToken).not.toBeNull()
-    })
-
-    it('should delete a token when loggin user out', async () => {
-      const { login, pass, email } = testingDtosCreator.createUserDto({});
-      await createUser();
-      const tokens = await authService.checkCredentials({ loginOrEmail: login, password: pass })
-      let rTokenDb = await rTokensCollection.findOne({ token: tokens.refreshToken })
-      expect(rTokenDb).not.toBeNull()
-
-      await authService.revokeRefreshToken(tokens.refreshToken);
-
-      rTokenDb = await rTokensCollection.findOne({ token: tokens.refreshToken })
-      expect(rTokenDb).toBeNull()
-    })
-
-    it.skip('token should be deleted from db when expired', async () => {
-      const userId = new ObjectId()
-      const token = new RefreshToken(userId.toString())
-      token.expiration = DateTime.utc().plus(Duration.fromMillis(500)).toJSDate()
-      await rTokensRepository.saveRefreshToken(token);
-
-      //check it is in db
-      let dbEntry = await rTokensRepository.getRefreshToken(token.token)
-      expect(dbEntry).not.toBeNull()
-
-      //mongo runs deletion job only once in 60 second, so have to wait long
-      //in order to check it
-      await new Promise(resolve => setTimeout(resolve, 65000))
-
-      //check it is not in db
-      dbEntry = await rTokensRepository.getRefreshToken(token.token)
-      expect(dbEntry).toBeNull()
-    }, 70000)
-  })
-
 }
-
 )

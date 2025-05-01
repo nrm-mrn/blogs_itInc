@@ -1,11 +1,12 @@
-import { client, runDb, usersCollection } from "../../src/db/mongoDb";
+import { client, requestsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { createUser, loginUser, req, testingDtosCreator, UserDto } from "../test-helpers";
 import { app } from "../../src/app";
-import request from 'supertest';
+import request, { Test } from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
+import { Response } from "express";
 
-describe('auth tests', () => {
+describe('auth e2e tests', () => {
 
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
@@ -16,7 +17,8 @@ describe('auth tests', () => {
   })
 
   beforeEach(async () => {
-    await usersCollection.drop()
+    await usersCollection.drop();
+    await requestsCollection.drop();
   })
 
   afterAll(async () => {
@@ -149,5 +151,51 @@ describe('auth tests', () => {
     await req
       .post(SETTINGS.PATHS.AUTH + '/refresh-token')
       .expect(HttpStatuses.Unauthorized)
+  })
+
+  describe('rate limiter tests', () => {
+
+    it('should save requests to db and enforce limits', async () => {
+      const validUser: UserDto = {
+        login: 'testUser',
+        pass: 'qwerty123',
+        email: 'test@gmail.com'
+      }
+
+      const results: Test[] = [];
+      for (let i = 0; i < 6; i++) {
+        let res = req.post(SETTINGS.PATHS.AUTH + '/login')
+          .send({ loginOrEmail: validUser.login, password: 'invalid' })
+        results.push(res)
+      }
+
+      await Promise.all(results);
+
+      for (let i = 0; i < 6; i++) {
+        if (i < 5) {
+          results[i].expect(401);
+        }
+        if (i === 5) {
+          results[i].expect(429);
+        }
+      }
+
+      //check that new requests will not be added to db until limiter resets
+      const count = await requestsCollection.countDocuments({});
+      await req.post(SETTINGS.PATHS.AUTH + '/login')
+        .send({ loginOrEmail: validUser.login, password: 'invalid' })
+        .expect(429)
+
+      const newCount = await requestsCollection.countDocuments({});
+      expect(newCount).toEqual(count)
+
+      //wait for timeout
+      await new Promise(res => setTimeout(res, 11000))
+
+      //now requests should go through again
+      let res = await req.post(SETTINGS.PATHS.AUTH + '/login')
+        .send({ loginOrEmail: validUser.login, password: 'invalid' })
+        .expect(401)
+    }, 15000)
   })
 })

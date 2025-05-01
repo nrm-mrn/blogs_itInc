@@ -10,16 +10,28 @@ import { inputValidationResultMiddleware } from "../../shared/middlewares/valida
 import { UserInputModel } from "../../users/user.types";
 import { refreshTokenGuard } from "../guards/refreshTGuard";
 import { SETTINGS } from "../../settings/settings";
+import { sessionsService } from "../../security/sessions.service";
+import { requestsLimiter } from "../../security/api/middleware/requestsLimiter.middleware";
 
 
 export const authRouter = Router({})
 
-//TODO: add refresh token to cookie
 authRouter.post('/login',
+  requestsLimiter,
   loginInputValidation,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<LoginBody>, res: Response<{ accessToken: string }>, next: NextFunction) => {
-    const creds: LoginDto = req.body;
+    let agent = req.headers['user-agent'];
+    if (!agent) {
+      agent = 'default agent';
+    }
+
+    const creds: LoginDto = {
+      loginOrEmail: req.body.loginOrEmail,
+      password: req.body.password,
+      ip: req.ip ? req.ip : '',
+      title: agent,
+    }
     try {
       const { accessToken, refreshToken } = await authService.checkCredentials(creds)
       res.status(HttpStatuses.Success)
@@ -63,8 +75,9 @@ authRouter.post('/logout',
   async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies.refreshToken as string
     try {
-      await authService.revokeRefreshToken(token)
-      res.sendStatus(HttpStatuses.NoContent)
+      await sessionsService.logout(token)
+      res.clearCookie('refreshToken')
+        .sendStatus(HttpStatuses.NoContent)
       return
     } catch (err) {
       next(err)
@@ -89,6 +102,7 @@ authRouter.get('/me',
 )
 
 authRouter.post('/registration',
+  requestsLimiter,
   userRegistrationValidator,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<UserInputModel>, res: Response, next: NextFunction) => {
@@ -104,6 +118,7 @@ authRouter.post('/registration',
   })
 
 authRouter.post('/registration-email-resending',
+  requestsLimiter,
   userEmailValidator,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<{ email: string }>, res: Response, next: NextFunction) => {
@@ -119,6 +134,7 @@ authRouter.post('/registration-email-resending',
   })
 
 authRouter.post('/registration-confirmation',
+  requestsLimiter,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<{ code: string }>, res: Response, next: NextFunction) => {
     const code: string = req.body.code;

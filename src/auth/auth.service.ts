@@ -1,5 +1,5 @@
 import { usersRepository } from "../users/users.repository"
-import { AuthSuccess, LoginDto, MeView } from "./auth.types";
+import { AuthSuccess, CreateRefreshTokenDto, LoginDto, MeView, RTokenPayload } from "./auth.types";
 import { ObjectId, WithId } from "mongodb";
 import { usersQueryRepository } from "../users/usersQuery.repository";
 import { APIErrorResult, CustomError } from "../shared/types/error.types";
@@ -12,8 +12,8 @@ import { nodemailerService } from "./email.service";
 import { emailTemplates } from "./email.templates";
 import { SETTINGS } from "../settings/settings";
 import { DateTime } from 'luxon'
-import { RefreshToken } from "./refreshToken.entity";
-import { rTokensRepository } from "./auth.repository";
+import { sessionsService } from "../security/sessions.service";
+import { CreateSessionDto } from "../security/session.types";
 
 export const authService = {
 
@@ -33,10 +33,23 @@ export const authService = {
         throw new Error(`Could not check user credentials: ${err}`)
       }
     }
+    const rtInput: CreateRefreshTokenDto = {
+      userId: user._id.toString(),
+      deviceId: new ObjectId().toString(),
+    }
     const accessToken = jwtService.createAccessToken(user._id.toString())
-    const refreshToken = new RefreshToken(user._id.toString())
-    await rTokensRepository.saveRefreshToken(refreshToken)
-    return { accessToken, refreshToken: refreshToken.token }
+    const { token: rToken, iat } = jwtService.createRefreshToken(rtInput)
+
+    const sessionInput: CreateSessionDto = {
+      deviceId: rtInput.deviceId,
+      userId: rtInput.userId,
+      iat,
+      ip: credentials.ip,
+      title: credentials.title,
+    }
+    await sessionsService.saveSession(sessionInput);
+
+    return { accessToken, refreshToken: rToken }
   },
 
 
@@ -136,34 +149,23 @@ export const authService = {
 
   async reissueTokensPair(token: string): Promise<AuthSuccess> {
     //NOTE: should always work since guard check passed
-    const payload = jwtService.decodeToken(token) as { userId: string, jti: string }
+    const payload = jwtService.verifyRefreshToken(token) as unknown as RTokenPayload
 
-    const tokenDbEntry = await rTokensRepository.getRefreshToken(token);
-    if (!tokenDbEntry) {
-      throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
-    }
-    if (DateTime.fromJSDate(tokenDbEntry.expiration) < DateTime.utc()) {
-      await rTokensRepository.deleteRefreshToken(token)
-      throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
+    const session = await sessionsService.getSession(payload.deviceId, payload.iat);
+    if (!session) {
+      throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
     }
 
-    const newRToken = new RefreshToken(payload.userId);
+    const { token: newRToken, iat } = jwtService.createRefreshToken(
+      {
+        deviceId: payload.deviceId,
+        userId: payload.userId,
+      });
     const accessToken = jwtService.createAccessToken(payload.userId)
-    const pr1 = rTokensRepository.deleteRefreshToken(token);
-    const pr2 = rTokensRepository.saveRefreshToken(newRToken)
-    await Promise.all([pr1, pr2])
-    return { accessToken, refreshToken: newRToken.token }
+    await sessionsService.refreshSession(
+      payload.deviceId,
+      iat
+    )
+    return { accessToken, refreshToken: newRToken }
   },
-
-  async revokeRefreshToken(token: string): Promise<void> {
-    const tokenDbEntry = await rTokensRepository.getRefreshToken(token);
-    if (!tokenDbEntry) {
-      throw new CustomError('Refresh token does not exist or already revoked', HttpStatuses.Unauthorized)
-    }
-    if (DateTime.fromJSDate(tokenDbEntry.expiration) < DateTime.utc()) {
-      await rTokensRepository.deleteRefreshToken(token)
-      throw new CustomError('Refresh token expired', HttpStatuses.Unauthorized)
-    }
-    return await rTokensRepository.deleteRefreshToken(token);
-  }
 }

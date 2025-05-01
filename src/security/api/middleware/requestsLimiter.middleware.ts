@@ -1,0 +1,26 @@
+import { NextFunction, Request, Response } from "express";
+import { SETTINGS } from "../../../settings/settings";
+import { apiRequestService } from "../../apiRequest.service";
+import { CreateRequestDto } from "../../apiRequest.types";
+
+export const requestsLimiter = async (req: Request, res: Response, next: NextFunction) => {
+  const ip = req.ip!;
+  const URL = req.originalUrl;
+  const timeLimit = SETTINGS.REQUESTS_LIFETIME;
+
+  const count = await apiRequestService.getDocsCountForPeriod(
+    ip,
+    URL,
+    timeLimit
+  )
+  if (count > 5) {
+    res.sendStatus(429);
+    return;
+  }
+  const newRequest: CreateRequestDto = { ip, URL };
+  await apiRequestService.saveRequest(newRequest).catch(err => {
+    throw new Error(`Could not save request: ${err}`)
+  })
+  next();
+  return;
+}

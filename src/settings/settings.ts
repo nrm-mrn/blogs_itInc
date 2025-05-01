@@ -12,7 +12,9 @@ export const SETTINGS = {
     USERS: '/users',
     AUTH: '/auth',
     COMMENTS: '/comments',
-    RTOKEN: '/refresh-tokens'
+    RTOKEN: '/refresh-tokens',
+    SECURITY: '/security',
+    REQUESTS: '/requests'
   },
   DB_NAME: process.env.DB_NAME || 'test',
   MONGO_URL: process.env.MONGO_URL || '',
@@ -24,4 +26,7 @@ export const SETTINGS = {
   EMAIL_PASS: process.env.EMAIL_PASS as string,
   TEST_DOMAIN: process.env.TEST_DOMAIN || 'localhost',
   EMAIL_EXPIRATION: Duration.fromObject({ minutes: 10 }),
+  //NOTE: this is the lifetime of a request in db in seconds, but mongo runs 
+  //deletion job not often than once in a minute
+  REQUESTS_LIFETIME: 10,
 }

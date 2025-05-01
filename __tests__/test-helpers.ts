@@ -123,9 +123,12 @@ export const insertUser = async (user: User) => {
   return
 }
 
-export const loginUser = async (loginDto?: LoginDto): Promise<{ accessToken: string }> => {
+export const loginUser = async (loginDto?: { loginOrEmail: string, password: string }): Promise<{ accessToken: string, refreshToken: string }> => {
   const defaultUser = testingDtosCreator.createUserDto({})
-  const dto = loginDto ?? { loginOrEmail: defaultUser.login, password: defaultUser.pass }
+  const dto = loginDto ?? {
+    loginOrEmail: defaultUser.login,
+    password: defaultUser.pass,
+  }
   const resp = await req
     .post(SETTINGS.PATHS.AUTH + '/login')
     .send(dto)
