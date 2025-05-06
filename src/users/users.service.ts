@@ -124,7 +124,7 @@ export const userService = {
     const expired = user.passwordRecovery.expirationDate < DateTime.now();
     if (expired) {
       const errObj: APIErrorResult = {
-        errorsMessages: [{ field: 'code', message: 'code is expired' }]
+        errorsMessages: [{ field: 'recoveryCode', message: 'code is expired' }]
       }
       throw new CustomError('code has been expired', HttpStatuses.BadRequest, errObj)
     }
