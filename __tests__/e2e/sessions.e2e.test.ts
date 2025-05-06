@@ -1,6 +1,10 @@
+jest.mock("../../src/security/api/middleware/requestsLimiter.middleware", () =>
+({
+  requestsLimiter: (req: any, res: any, next: NextFunction) => next(),
+}))
 import { client, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, loginUser, req, testingDtosCreator, UserDto } from "../test-helpers";
+import { createUser, req, testingDtosCreator, UserDto } from "../test-helpers";
 import { app } from "../../src/app";
 import request from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
@@ -8,8 +12,8 @@ import { AuthSuccess, LoginBody } from "../../src/auth/auth.types";
 import { IDeviceView, ISessionDb } from "../../src/security/session.types";
 import { jwtService } from "../../src/auth/jwt.service";
 import { ObjectId } from "mongodb";
-import { sessionsRepository } from "../../src/security/sessions.repository";
 import { sessionsQueryRepository } from "../../src/security/sessions.queryRepository";
+import { NextFunction } from "express";
 
 describe('sessions e2e tests', () => {
 

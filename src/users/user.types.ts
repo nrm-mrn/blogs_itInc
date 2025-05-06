@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
-import { User } from "./user.entity";
+import { PasswordRecovery, User } from "./user.entity";
+import { UUID } from "crypto";
 
 export type GetUsersQuery = {
   searchLoginTerm?: string;
@@ -18,10 +19,19 @@ export type GetUsersDto = {
   pagination: PagingFilter;
 }
 
+export type ConfirmPasswordDto = {
+  code: UUID;
+  password: string;
+}
+
 export interface IUserDb extends User { };
 
+export interface IUserWithPassRecovery extends User {
+  passwordRecovery: PasswordRecovery;
+}
+
 export interface IUserView {
-  id: ObjectId;
+  id: string;
   login: string;
   email: string;
   createdAt: string;

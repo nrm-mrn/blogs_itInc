@@ -1,5 +1,3 @@
-import { DeviceAuthSession } from "../security/session.entity";
-
 export type LoginBody = {
   loginOrEmail: string;
   password: string;
@@ -15,6 +13,11 @@ export type LoginDto = {
 export type LoginInputModel = {
   loginOrEmail: string;
   password: string;
+}
+
+export type PassRecoveryBody = {
+  newPassword: string,
+  recoveryCode: string,
 }
 
 export type MeView = {

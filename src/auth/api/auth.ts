@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, Router } from "express";
-import { RequestWithBody, RequestWithCookies, RequestWithUserId } from "../../shared/types/requests.types";
-import { loginInputValidation, userEmailValidator, userRegistrationValidator } from "./middleware/auth.validators";
-import { LoginBody, LoginDto, MeView, RefreshTokenRequest } from "../auth.types";
+import { RequestWithBody, RequestWithUserId } from "../../shared/types/requests.types";
+import { loginInputValidation, newUserPasswordValidator, userEmailValidator, userRegistrationValidator } from "./middleware/auth.validators";
+import { LoginBody, LoginDto, MeView, PassRecoveryBody } from "../auth.types";
 import { authService } from "../auth.service";
 import { jwtGuard } from "../guards/jwtGuard";
 import { ObjectId } from "mongodb";
@@ -11,6 +11,7 @@ import { UserInputModel } from "../../users/user.types";
 import { refreshTokenGuard } from "../guards/refreshTGuard";
 import { SETTINGS } from "../../settings/settings";
 import { sessionsService } from "../../security/sessions.service";
+import { usersQueryRepository } from "../../users/usersQuery.repository";
 import { requestsLimiter } from "../../security/api/middleware/requestsLimiter.middleware";
 
 
@@ -91,8 +92,11 @@ authRouter.get('/me',
   async (req: RequestWithUserId<{ id: string }>, res: Response<MeView>, next: NextFunction) => {
     const userId = new ObjectId(req.user!.id)
     try {
-      const { data } = await authService.getUserInfo(userId)
-      res.status(HttpStatuses.Success).send(data)
+      const user = await usersQueryRepository.getUserInfo(userId)
+      if (!user) {
+        throw new Error('User not found')
+      }
+      res.status(HttpStatuses.Success).send(user);
       return
     } catch (err) {
       next(err)
@@ -147,3 +151,37 @@ authRouter.post('/registration-confirmation',
       return
     }
   })
+
+authRouter.post('/password-recovery',
+  requestsLimiter,
+  userEmailValidator,
+  inputValidationResultMiddleware,
+  async (req: RequestWithBody<{ email: string }>, res: Response, next: NextFunction) => {
+    try {
+      await authService.recoverPassword(req.body.email);
+      res.sendStatus(HttpStatuses.NoContent)
+    } catch (err) {
+      next(err)
+      return
+    }
+  }
+)
+
+authRouter.post('/new-password',
+  requestsLimiter,
+  newUserPasswordValidator,
+  inputValidationResultMiddleware,
+  async (req: RequestWithBody<PassRecoveryBody>, res: Response, next: NextFunction) => {
+
+    try {
+      await authService.confirmPassword(
+        req.body.recoveryCode,
+        req.body.newPassword
+      )
+      res.sendStatus(204);
+    } catch (err) {
+      next(err)
+      return
+    }
+  }
+)

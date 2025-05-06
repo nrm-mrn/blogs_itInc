@@ -1,10 +1,19 @@
+jest.mock("../../src/security/api/middleware/requestsLimiter.middleware", () =>
+({
+  requestsLimiter: (req: any, res: any, next: NextFunction) => next(),
+}))
 import { client, requestsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { createUser, loginUser, req, testingDtosCreator, UserDto } from "../test-helpers";
 import { app } from "../../src/app";
-import request, { Test } from 'supertest';
+import request from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
-import { Response } from "express";
+import { nodemailerService } from "../../src/auth/email.service";
+import { IUserDb, IUserView } from "../../src/users/user.types";
+import { usersRepository } from "../../src/users/users.repository";
+import { randomUUID } from "crypto";
+import { ObjectId } from "mongodb";
+import { NextFunction } from "express";
 
 describe('auth e2e tests', () => {
 
@@ -79,7 +88,7 @@ describe('auth e2e tests', () => {
     authCookie = cookies.find(cookie => cookie.startsWith('refreshToken='))
     expect(authCookie).toContain('HttpOnly')
     expect(authCookie?.startsWith('refreshToken='))
-  })
+  },)
 
   it('Should get current user info', async () => {
     const userDto = testingDtosCreator.createUserDto({})
@@ -153,49 +162,83 @@ describe('auth e2e tests', () => {
       .expect(HttpStatuses.Unauthorized)
   })
 
-  describe('rate limiter tests', () => {
 
-    it('should save requests to db and enforce limits', async () => {
-      const validUser: UserDto = {
-        login: 'testUser',
-        pass: 'qwerty123',
-        email: 'test@gmail.com'
-      }
+  describe('password recovery tests', () => {
+    nodemailerService.sendEmail = jest
+      .fn()
+      .mockImplementation(
+        (email: string, template: string) =>
+          Promise.resolve(true)
+      );
 
-      const results: Test[] = [];
-      for (let i = 0; i < 6; i++) {
-        let res = req.post(SETTINGS.PATHS.AUTH + '/login')
-          .send({ loginOrEmail: validUser.login, password: 'invalid' })
-        results.push(res)
-      }
+    beforeEach(async () => {
+      await usersCollection.drop();
+      await requestsCollection.drop();
+    })
 
-      await Promise.all(results);
+    it('should reset a password', async () => {
+      const userDto = testingDtosCreator.createUserDto({})
+      const user: IUserView = await createUser();
 
-      for (let i = 0; i < 6; i++) {
-        if (i < 4) {
-          results[i].expect(401);
-        }
-        if (i === 4) {
-          results[i].expect(429);
-        }
-      }
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/password-recovery')
+        .send({ email: 'invalidemail' })
+        .expect(HttpStatuses.BadRequest)
+      expect(nodemailerService.sendEmail).not.toHaveBeenCalled()
 
-      //check that new requests will not be added to db until limiter resets
-      const count = await requestsCollection.countDocuments({});
-      await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.login, password: 'invalid' })
-        .expect(429)
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/password-recovery')
+        .send({ email: 'nonexistent@gmail.com' })
+        .expect(HttpStatuses.NoContent)
+      let userDb: IUserDb | null = await usersRepository.getUserById(new ObjectId(user.id))
+      expect(userDb).not.toBeNull()
+      expect(userDb?.passwordRecovery).toBeNull()
+      expect(nodemailerService.sendEmail).not.toHaveBeenCalled()
 
-      const newCount = await requestsCollection.countDocuments({});
-      expect(newCount).toEqual(count)
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/password-recovery')
+        .send({ email: userDto.email })
+        .expect(HttpStatuses.NoContent)
+      userDb = await usersRepository.getUserById(new ObjectId(user.id))
+      expect(nodemailerService.sendEmail).toHaveBeenCalled()
+      expect(nodemailerService.sendEmail).toHaveBeenCalledTimes(1)
+      expect(userDb?.passwordRecovery).not.toBeNull()
+      expect(userDb?.passwordRecovery?.confirmationCode).toEqual(expect.any(String))
+      const recCode = userDb?.passwordRecovery?.confirmationCode
 
-      //wait for timeout
-      await new Promise(res => setTimeout(res, 11000))
+      const invalidCode = 'safasf23'
+      const fakeCode = randomUUID();
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/new-password')
+        .send({ newPassword: 'newpass', recoveryCode: invalidCode })
+        .expect(HttpStatuses.BadRequest)
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/new-password')
+        .send({ newPassword: 'newpass', recoveryCode: fakeCode })
+        .expect(HttpStatuses.BadRequest)
 
-      //now requests should go through again
-      let res = await req.post(SETTINGS.PATHS.AUTH + '/login')
-        .send({ loginOrEmail: validUser.login, password: 'invalid' })
-        .expect(401)
-    }, 15000)
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/new-password')
+        .send({ newPassword: 'newpass', recoveryCode: recCode })
+        .expect(HttpStatuses.NoContent)
+
+      //old pass should not work
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/login')
+        .send({ loginOrEmail: userDto.email, password: userDto.pass })
+        .expect(HttpStatuses.Unauthorized)
+
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/login')
+        .send({ loginOrEmail: userDto.email, password: 'newpass' })
+        .expect(HttpStatuses.Success)
+
+
+      //code should be deleted after use
+      await req
+        .post(SETTINGS.PATHS.AUTH + '/new-password')
+        .send({ newPassword: 'newpass123', recoveryCode: recCode })
+        .expect(HttpStatuses.BadRequest)
+    })
   })
 })

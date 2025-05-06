@@ -1,8 +1,9 @@
 import { Filter, ObjectId } from "mongodb";
 import { usersCollection } from "../db/mongoDb";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { GetUsersDto, IUserDb, IUserView } from "./user.types";
+import { GetUsersDto, IUserView } from "./user.types";
 import { User } from "./user.entity";
+import { MeView } from "../auth/auth.types";
 
 export const usersQueryRepository = {
 
@@ -38,7 +39,7 @@ export const usersQueryRepository = {
       .toArray()
     const total = await usersCollection.countDocuments(filter);
     const usersView = users.map(user => {
-      return { id: user._id, login: user.login, email: user.email, createdAt: user.createdAt }
+      return { id: user._id.toString(), login: user.login, email: user.email, createdAt: user.createdAt }
     })
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
@@ -50,58 +51,28 @@ export const usersQueryRepository = {
   },
 
   async getUserById(id: ObjectId): Promise<IUserView | null> {
+    //for users router post method
     const user = await usersCollection.findOne({ _id: id })
     if (!user) {
       return null
     }
     return {
-      id: user._id,
+      id: user._id.toString(),
       login: user.login,
       email: user.email,
       createdAt: user.createdAt
     }
   },
 
-  async getUserByLogin(login: string): Promise<IUserView | null> {
-    const user = await usersCollection.findOne({ login })
+  async getUserInfo(id: ObjectId): Promise<MeView | null> {
+    const user = await usersCollection.findOne({ _id: id })
     if (!user) {
       return null
     }
     return {
-      id: user._id,
-      login: user.login,
+      userId: user._id.toString(),
       email: user.email,
-      createdAt: user.createdAt
-    }
-  },
-
-  async getUserByEmail(email: string): Promise<IUserView | null> {
-    const user = await usersCollection.findOne({ email })
-    if (!user) {
-      return null
-    }
-    return {
-      id: user._id,
       login: user.login,
-      email: user.email,
-      createdAt: user.createdAt
     }
   },
-
-  async getUserByEmailConfirmation(code: string): Promise<IUserDb | null> {
-    const user = await usersCollection.findOne({ 'emailConfirmation.confirmationCode': code })
-    if (!user) {
-      return null
-    }
-    return user
-  },
-
-  async getUserDbModelByEmail(email: string): Promise<IUserDb | null> {
-    const user = await usersCollection.findOne({ email })
-    if (!user) {
-      return null
-    }
-    return user
-  }
-
 }

@@ -26,6 +26,7 @@ export const SETTINGS = {
   EMAIL_PASS: process.env.EMAIL_PASS as string,
   TEST_DOMAIN: process.env.TEST_DOMAIN || 'localhost',
   EMAIL_EXPIRATION: Duration.fromObject({ minutes: 10 }),
+  PASS_RECOVERY_EXPIRATION: Duration.fromObject({ minutes: 10 }),
   //NOTE: this is the lifetime of a request in db in seconds, but mongo runs 
   //deletion job not often than once in a minute
   REQUESTS_LIFETIME: 10,

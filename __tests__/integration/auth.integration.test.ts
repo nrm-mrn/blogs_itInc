@@ -6,8 +6,8 @@ import { SETTINGS } from "../../src/settings/settings";
 import { createUser, insertUser, testingDtosCreator } from "../test-helpers";
 import { User } from "../../src/users/user.entity";
 import { DateTime } from "luxon";
-import { usersQueryRepository } from "../../src/users/usersQuery.repository";
 import { randomUUID } from "crypto";
+import { usersRepository } from "../../src/users/users.repository";
 
 describe('auth integration tests', () => {
   beforeAll(async () => {
@@ -59,7 +59,7 @@ describe('auth integration tests', () => {
   })
 
   describe('Email confirmation', () => {
-    const confirmEmailUseCase = authService.confirmEmail;
+    const confirmEmailUseCase = authService.confirmEmail.bind(authService)
     const code = randomUUID()
 
     it('should not confirm email if user does not exist', async () => {
@@ -87,7 +87,7 @@ describe('auth integration tests', () => {
 
       await expect(confirmEmailUseCase(code)).rejects.toThrow(/expired/i)
 
-      const dbUser = await usersQueryRepository.getUserByEmailConfirmation(code);
+      const dbUser = await usersRepository.getUserByEmailConfirmation(code);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(false)
     });
@@ -100,7 +100,7 @@ describe('auth integration tests', () => {
 
       await confirmEmailUseCase(user.emailConfirmation.confirmationCode)
 
-      const dbUser = await usersQueryRepository.getUserByEmailConfirmation(user.emailConfirmation.confirmationCode);
+      const dbUser = await usersRepository.getUserByEmailConfirmation(user.emailConfirmation.confirmationCode);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(true)
     });
@@ -115,7 +115,7 @@ describe('auth integration tests', () => {
           Promise.resolve(true)
       );
 
-    const resendConfirmUseCase = authService.resendConfirmation
+    const resendConfirmUseCase = authService.resendConfirmation.bind(authService)
 
     it('should not confirm email with expired code', async () => {
       const { login, pass, email } = testingDtosCreator.createUserDto({});
@@ -130,7 +130,7 @@ describe('auth integration tests', () => {
       expect(nodemailerService.sendEmail).toHaveBeenCalled()
       expect(nodemailerService.sendEmail).toHaveBeenCalledTimes(1)
 
-      const dbUser = await usersQueryRepository.getUserByEmailConfirmation(mockUuid);
+      const dbUser = await usersRepository.getUserByEmailConfirmation(mockUuid);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(false)
     });

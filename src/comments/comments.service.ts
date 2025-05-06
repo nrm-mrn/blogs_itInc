@@ -4,8 +4,8 @@ import { CommentDbModel, CommentViewModel, CreateCommentDto, DeleteCommentDto, U
 import { commentsQueryRepository } from "./commentsQuery.repository";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
-import { usersQueryRepository } from "../users/usersQuery.repository";
 import { postsQueryRepository } from "../posts/postsQuery.repository";
+import { userService } from "../users/users.service";
 
 export const commentsService = {
   async createComment(dto: CreateCommentDto): Promise<{ data: CommentViewModel }> {
@@ -14,7 +14,7 @@ export const commentsService = {
       throw new CustomError('Post with provided id does not exist', HttpStatuses.NotFound)
     }
     const userId = new ObjectId(dto.userId)
-    const user = await usersQueryRepository.getUserById(userId)
+    const user = await userService.getUserById(userId)
     if (!user) {
       throw new Error('Failed to create a comment: user not found')
     }

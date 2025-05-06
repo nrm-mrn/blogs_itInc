@@ -7,7 +7,8 @@ export class User {
   email: string;
   passwordHash: string;
   createdAt: string;
-  emailConfirmation: EmailConfirmation
+  emailConfirmation: EmailConfirmation;
+  passwordRecovery: PasswordRecovery | null;
   constructor(login: string, email: string, hash: string) {
     this.login = login
     this.email = email
@@ -18,14 +19,33 @@ export class User {
       confirmationCode: User.genConfirmationCode(),
       isConfirmed: false
     }
+    this.passwordRecovery = null;
   }
   public static genConfirmationCode(): UUID {
     return randomUUID()
   }
+  public static genPasswordRecovery(): PasswordRecovery {
+    return {
+      confirmationCode: User.genConfirmationCode(),
+      expirationDate: DateTime.now().plus(SETTINGS.PASS_RECOVERY_EXPIRATION)
+    }
+  }
+  public static genEmailConfirmtion(): EmailConfirmation {
+    return {
+      expirationDate: DateTime.now().plus(SETTINGS.EMAIL_EXPIRATION),
+      confirmationCode: User.genConfirmationCode(),
+      isConfirmed: false,
+    }
+  }
 }
 
 export interface EmailConfirmation {
-  confirmationCode: string;
+  confirmationCode: UUID;
   expirationDate: DateTime;
   isConfirmed: boolean;
+}
+
+export interface PasswordRecovery {
+  confirmationCode: UUID;
+  expirationDate: DateTime;
 }

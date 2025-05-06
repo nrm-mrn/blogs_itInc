@@ -40,9 +40,12 @@ usersRouter.post('/',
   userInputValidator,
   inputValidationResultMiddleware,
   async (req: RequestWithBody<UserInputModel>, res: Response<IUserView | APIErrorResult>, next: NextFunction) => {
-    let user: IUserView;
     try {
-      user = await userService.createUser(req.body);
+      const { userId } = await userService.createUser(req.body);
+      const user = await usersQueryRepository.getUserById(userId);
+      if (!user) {
+        throw new Error('Could not find created user')
+      }
       res.status(201).send(user)
       return;
     } catch (err) {
