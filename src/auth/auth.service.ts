@@ -115,7 +115,7 @@ export const authService = {
     }
     const emailTemplate = emailTemplates.passwordRecovery(recoveryObj.confirmationCode);
 
-    nodemailerService.sendEmail(
+    await nodemailerService.sendEmail(
       email,
       emailTemplate
     ).catch(err => console.error(`Error sending email: ${err}`))
