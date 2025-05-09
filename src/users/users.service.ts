@@ -1,14 +1,24 @@
 import { ObjectId, WithId } from "mongodb";
-import { usersRepository } from "./users.repository";
+import { UsersRepository } from "./users.repository";
 import { APIErrorResult, CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { ConfirmPasswordDto, IUserDb, UserInputModel } from "./user.types";
-import { passwordHashService } from "../auth/passHash.service";
+import { PasswordHashService } from "../auth/passHash.service";
 import { EmailConfirmation, PasswordRecovery, User } from "./user.entity";
 import { UUID } from "crypto";
 import { DateTime } from "luxon";
+import { inject, injectable } from "inversify";
 
-export const userService = {
+@injectable()
+export class UserService {
+
+  constructor(
+    @inject(UsersRepository)
+    private readonly usersRepository: UsersRepository,
+    @inject(PasswordHashService)
+    private readonly passHashService: PasswordHashService,
+  ) { }
+
   async createUser(input: UserInputModel): Promise<{ userId: ObjectId }> {
     const uniqueLogin = await this.isLoginUnique(input.login)
     if (!uniqueLogin) {
@@ -29,51 +39,51 @@ export const userService = {
       throw new CustomError('Email already exists', HttpStatuses.BadRequest, error)
     }
 
-    const hash = await passwordHashService.createHash(input.password);
+    const hash = await this.passHashService.createHash(input.password);
     const newUser = new User(
       input.login,
       input.email,
       hash
     )
-    const userId = await usersRepository.createUser(newUser)
+    const userId = await this.usersRepository.createUser(newUser)
 
     return { userId }
-  },
+  }
 
   async getUserById(id: ObjectId): Promise<WithId<IUserDb> | null> {
-    return usersRepository.getUserById(id);
-  },
+    return this.usersRepository.getUserById(id);
+  }
 
   async getUserByLoginOrEmail(input: string): Promise<WithId<IUserDb>> {
-    const user = await usersRepository.getUserByLoginOrEmail(input);
+    const user = await this.usersRepository.getUserByLoginOrEmail(input);
     if (!user) {
       throw new CustomError('User not found', HttpStatuses.NotFound)
     }
     return user
-  },
+  }
 
   async isLoginUnique(login: string): Promise<boolean> {
-    const loginRes = await usersRepository.getUserByLoginOrEmail(login)
+    const loginRes = await this.usersRepository.getUserByLoginOrEmail(login)
     if (loginRes) {
       return false
     }
     return true
-  },
+  }
 
   async isEmailUnique(email: string): Promise<boolean> {
-    const emailRes = await usersRepository.getUserByLoginOrEmail(email)
+    const emailRes = await this.usersRepository.getUserByLoginOrEmail(email)
     if (emailRes) {
       return false
     }
     return true
-  },
+  }
 
   async deleteUser(id: ObjectId): Promise<void> {
-    return usersRepository.deleteUser(id)
-  },
+    return this.usersRepository.deleteUser(id)
+  }
 
   async updateEmailConfirmation(email: string): Promise<EmailConfirmation> {
-    const user = await usersRepository.getUserByEmail(email);
+    const user = await this.usersRepository.getUserByEmail(email);
     if (!user) {
       throw new CustomError('User with provided email does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'user with given email does not exist' }] })
     }
@@ -81,12 +91,12 @@ export const userService = {
       throw new CustomError('Email is already confirmed', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'email', message: 'email is already confirmed' }] })
     }
     const newConfirmation = User.genEmailConfirmtion();
-    await usersRepository.updateEmailConfirmation(email, newConfirmation);
+    await this.usersRepository.updateEmailConfirmation(email, newConfirmation);
     return newConfirmation
-  },
+  }
 
   async confirmEmail(code: UUID): Promise<void> {
-    const user = await usersRepository.getUserByEmailConfirmation(code)
+    const user = await this.usersRepository.getUserByEmailConfirmation(code)
     if (!user) {
       throw new CustomError('User with provided code does not exist', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'user with provided code does not exist' }] })
     }
@@ -100,21 +110,21 @@ export const userService = {
       throw new CustomError('code has been expired', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'code', message: 'code has expired' }] })
     }
 
-    await usersRepository.confirmEmail(user._id);
-  },
+    await this.usersRepository.confirmEmail(user._id);
+  }
 
   async setPasswordRecovery(email: string): Promise<PasswordRecovery | null> {
-    const user = await usersRepository.getUserByEmail(email);
+    const user = await this.usersRepository.getUserByEmail(email);
     if (!user) {
       return null;
     }
     const recoveryObj = User.genPasswordRecovery();
-    await usersRepository.recoverPassword(email, recoveryObj);
+    await this.usersRepository.recoverPassword(email, recoveryObj);
     return recoveryObj;
-  },
+  }
 
   async confirmPassword(input: ConfirmPasswordDto): Promise<void> {
-    const user = await usersRepository.getUserByPassRecovery(input.code);
+    const user = await this.usersRepository.getUserByPassRecovery(input.code);
     if (!user) {
       const errObj: APIErrorResult = {
         errorsMessages: [{ field: 'code', message: 'incorrect code' }],
@@ -128,12 +138,10 @@ export const userService = {
       }
       throw new CustomError('code has been expired', HttpStatuses.BadRequest, errObj)
     }
-    const hash = await passwordHashService.createHash(input.password);
+    const hash = await this.passHashService.createHash(input.password);
 
-    await usersRepository.updatePassword(user._id, hash);
-    await usersRepository.cleanPassRecovery(user._id);
+    await this.usersRepository.updatePassword(user._id, hash);
+    await this.usersRepository.cleanPassRecovery(user._id);
     return
   }
-
-
 }

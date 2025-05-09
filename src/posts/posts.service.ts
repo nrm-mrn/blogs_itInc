@@ -1,37 +1,55 @@
 import { ObjectId } from "mongodb";
-import { blogQueryRepository } from "../blogs/blogsQuery.repository";
-import { postsRepository } from "./posts.repository";
-import { PostInputModel, PostViewModel, PostDbModel } from "./posts.types";
+import { PostsRepository } from "./posts.repository";
+import { PostInputModel } from "./posts.types";
+import { APIErrorResult, CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
+import { Post } from "./post.entity";
+import { inject, injectable } from "inversify";
+import { BlogRepository } from "../blogs/blogs.repository";
 
-export const postsService = {
-  async createPost(input: PostInputModel): Promise<{ post: PostViewModel | null, error: string | null }> {
+@injectable()
+export class PostsService {
+  constructor(
+    @inject(PostsRepository)
+    private readonly postsRepository: PostsRepository,
+    @inject(BlogRepository)
+    private readonly blogRepository: BlogRepository
+  ) { }
+  async createPost(input: PostInputModel): Promise<ObjectId> {
     const blogId = new ObjectId(input.blogId);
-    const parentBlog = await blogQueryRepository.findBlog(blogId)
+    const parentBlog = await this.blogRepository.findBlogById(blogId)
     if (!parentBlog) {
-      return { post: null, error: 'BlogId does not exist' }
+      const errObj: APIErrorResult = {
+        errorsMessages: [{ field: 'blogId', message: 'Wrong blogId' }]
+      }
+      throw new CustomError('BlogId does not exist', HttpStatuses.BadRequest, errObj)
     }
-    const datetime = new Date()
-    const datetimeISO = datetime.toISOString()
-    const newPost: PostDbModel = {
-      _id: new ObjectId(),
-      blogName: parentBlog.name,
-      createdAt: datetimeISO,
-      ...input,
-      blogId
-    }
-    const { post, error } = await postsRepository.createPost(newPost);
+    const newPost = new Post(
+      input.title,
+      input.shortDescription,
+      input.content,
+      blogId,
+      parentBlog.name,
+    )
+    const postId = await this.postsRepository.createPost(newPost);
+    return postId
+  }
+
+  async editPost(id: ObjectId, input: PostInputModel): Promise<void> {
+    const post = await this.postsRepository.getPost(id);
     if (!post) {
-      return { post: null, error }
+      throw new CustomError('Post does not exist', HttpStatuses.NotFound)
     }
-    const { _id, ...rest } = post;
-    return { post: { id: _id, ...rest }, error: null }
-  },
+    await this.postsRepository.editPost(id, input);
+    return;
+  }
 
-  async editPost(id: ObjectId, input: PostInputModel): Promise<{ error: string | null }> {
-    return postsRepository.editPost(id, input);
-  },
-
-  async deletePost(id: ObjectId): Promise<{ error: string | null }> {
-    return postsRepository.deletePost(id)
+  async deletePost(id: ObjectId): Promise<void> {
+    const post = await this.postsRepository.getPost(id);
+    if (!post) {
+      throw new CustomError('Post does not exist', HttpStatuses.NotFound)
+    }
+    await this.postsRepository.deletePost(id)
+    return;
   }
 }

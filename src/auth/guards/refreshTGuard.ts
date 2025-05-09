@@ -1,5 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { jwtService } from "../jwt.service";
+import { JwtService } from "../jwt.service";
+import { container } from "../../ioc";
+
+//TODO: get rid of service locator
+const jwtService = container.get(JwtService)
 
 export const refreshTokenGuard = (req: Request, res: Response, next: NextFunction) => {
   if (!req.cookies.refreshToken) {

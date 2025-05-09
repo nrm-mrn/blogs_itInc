@@ -1,16 +1,19 @@
 import { blogsCollection, client, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
-import { userService } from "../../src/users/users.service";
 import { SETTINGS } from "../../src/settings/settings";
 import { PagedResponse, PagingQuery, SortDirection } from "../../src/shared/types/pagination.types";
 import { GetUsersQuery, UserInputModel } from "../../src/users/user.types";
-import { req } from "../test-helpers";
-import { BlogViewModel } from "../../src/blogs/blogs.types";
+import { testSeeder } from "../test-helpers";
+import { IBlogView } from "../../src/blogs/blogs.types";
 import { IUserView } from "../../src/users/user.types";
+import { createApp } from "../../src/app";
+import { agent } from "supertest";
 
-describe('users tests', () => {
-
+describe('users e2e tests', () => {
   let buff;
   let codedAuth: string;
+  let req: any;
+  let app: any;
+
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
     if (!res) {
@@ -21,6 +24,9 @@ describe('users tests', () => {
     await usersCollection.drop()
     buff = Buffer.from(SETTINGS.SUPERUSER!);
     codedAuth = buff.toString('base64')
+    app = createApp()
+    req = agent(app)
+
   })
 
   afterAll(async () => {
@@ -34,7 +40,7 @@ describe('users tests', () => {
       const res = await req.get(SETTINGS.PATHS.USERS)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const usersPage: PagedResponse<BlogViewModel> = res.body
+      const usersPage: PagedResponse<IBlogView> = res.body
       expect(Array.isArray(usersPage.items)).toBe(true);
       expect(usersPage.items.length).toBe(0);
 
@@ -149,13 +155,15 @@ describe('users tests', () => {
         email: 'testing@mail.com'
       }
       const total = 25
+      const userInputs: Array<UserInputModel> = [];
       for (let i = 0; i < total; i++) {
-        await userService.createUser({
+        userInputs.push({
           login: `${i}` + userPattern.login,
           password: userPattern.password,
           email: `${i + 30}` + userPattern.email,
         })
       }
+      await testSeeder.createUsers(userInputs);
 
       let paging: PagingQuery = {
         sortDirection: SortDirection.ASC,
@@ -167,7 +175,7 @@ describe('users tests', () => {
       let res = await req.get(SETTINGS.PATHS.USERS).query(paging)
         .set({ 'authorization': 'Basic ' + codedAuth })
         .expect(200)
-      const usersPage: PagedResponse<BlogViewModel> = res.body
+      const usersPage: PagedResponse<IUserView> = res.body
       expect(usersPage.totalCount).toBe(25);
 
       let query: GetUsersQuery = {

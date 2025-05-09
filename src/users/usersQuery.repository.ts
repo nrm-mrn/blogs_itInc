@@ -4,8 +4,10 @@ import { PagedResponse } from "../shared/types/pagination.types";
 import { GetUsersDto, IUserView } from "./user.types";
 import { User } from "./user.entity";
 import { MeView } from "../auth/auth.types";
+import { injectable } from "inversify";
 
-export const usersQueryRepository = {
+@injectable()
+export class UsersQueryRepository {
 
   getFilter(dto: GetUsersDto): Filter<User> {
     let searchLogin;
@@ -26,7 +28,7 @@ export const usersQueryRepository = {
       return { $or: [searchEmail] }
     }
     return {}
-  },
+  }
 
   async getAllUsers(dto: GetUsersDto): Promise<PagedResponse<IUserView>> {
     const filter = this.getFilter(dto)
@@ -48,7 +50,7 @@ export const usersQueryRepository = {
       totalCount: total,
       items: usersView,
     }
-  },
+  }
 
   async getUserById(id: ObjectId): Promise<IUserView | null> {
     //for users router post method
@@ -62,7 +64,7 @@ export const usersQueryRepository = {
       email: user.email,
       createdAt: user.createdAt
     }
-  },
+  }
 
   async getUserInfo(id: ObjectId): Promise<MeView | null> {
     const user = await usersCollection.findOne({ _id: id })
@@ -74,5 +76,5 @@ export const usersQueryRepository = {
       email: user.email,
       login: user.login,
     }
-  },
+  }
 }

@@ -1,19 +1,25 @@
 import { ObjectId } from "mongodb";
 import { ApiRequest } from "./apiRequest.entity";
-import { apiRequestsRepository } from "./apiRequest.repository";
+import { ApiRequestsRepository } from "./apiRequest.repository";
 import { CreateRequestDto } from "./apiRequest.types";
+import { inject, injectable } from "inversify";
 
-export const apiRequestService = {
+@injectable()
+export class ApiRequestService {
+  constructor(
+    @inject(ApiRequestsRepository)
+    private readonly apiRequestRepository: ApiRequestsRepository
+  ) { }
   async saveRequest(req: CreateRequestDto): Promise<ObjectId> {
     const reqInput: ApiRequest = new ApiRequest(
       req.ip,
       req.URL,
     )
-    return await apiRequestsRepository.saveRequest(reqInput);
-  },
+    return await this.apiRequestRepository.saveRequest(reqInput);
+  }
 
   async getDocsCountForPeriod(ip: string, url: string, seconds: number): Promise<number> {
-    const reqs = await apiRequestsRepository.getRequestsForPeriod(
+    const reqs = await this.apiRequestRepository.getRequestsForPeriod(
       ip,
       url,
       seconds

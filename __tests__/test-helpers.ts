@@ -1,16 +1,17 @@
-import { agent } from "supertest";
-import { app } from '../src/app'
 import { SETTINGS } from "../src/settings/settings";
-import { BlogInputModel, BlogViewModel } from "../src/blogs/blogs.types";
-import { blogService } from "../src/blogs/blogs.service";
-import { PostInputModel, PostViewModel } from "../src/posts/posts.types";
-import { postsService } from "../src/posts/posts.service";
+import { BlogInputModel, IBlogView } from "../src/blogs/blogs.types";
+import { BlogService } from "../src/blogs/blogs.service";
+import { PostInputModel, IPostView } from "../src/posts/posts.types";
+import { PostsService } from "../src/posts/posts.service";
 import { ObjectId } from "mongodb";
-import { IUserView } from "../src/users/user.types";
+import { IUserView, UserInputModel } from "../src/users/user.types";
 import { User } from "../src/users/user.entity";
-import { usersRepository } from "../src/users/users.repository";
-
-export const req = agent(app)
+import { UsersRepository } from "../src/users/users.repository";
+import { BlogQueryRepository } from "../src/blogs/blogsQuery.repository";
+import { container } from "../src/ioc";
+import { PostsQueryRepository } from "../src/posts/postsQuery.repository";
+import { UserService } from "../src/users/users.service";
+import TestAgent from "supertest/lib/agent";
 
 export type UserDto = {
   login: string
@@ -83,7 +84,7 @@ export const testingDtosCreator = {
 const buff = Buffer.from(SETTINGS.SUPERUSER!);
 const codedAuth = buff.toString('base64')
 
-export const createUser = async (userDto?: UserDto) => {
+export const registerUser = async (req: TestAgent, userDto?: UserDto) => {
   const dto = userDto ?? testingDtosCreator.createUserDto({});
 
   const resp = await req
@@ -98,7 +99,7 @@ export const createUser = async (userDto?: UserDto) => {
   return resp.body;
 };
 
-export const createUsers = async (count: number) => {
+export const createUsers = async (req: TestAgent, count: number) => {
   const users: Array<IUserView> = [];
 
   for (let i = 0; i <= count; i++) {
@@ -117,12 +118,14 @@ export const createUsers = async (count: number) => {
   return users;
 };
 
+const userRepository = container.get(UsersRepository)
+
 export const insertUser = async (user: User) => {
-  await usersRepository.createUser(user);
+  await userRepository.createUser(user);
   return
 }
 
-export const loginUser = async (loginDto?: { loginOrEmail: string, password: string }): Promise<{ accessToken: string, refreshToken: string }> => {
+export const loginUser = async (req: TestAgent, loginDto?: { loginOrEmail: string, password: string }): Promise<{ accessToken: string, refreshToken: string }> => {
   const defaultUser = testingDtosCreator.createUserDto({})
   const dto = loginDto ?? {
     loginOrEmail: defaultUser.login,
@@ -141,25 +144,47 @@ export type PostDto = {
   content: string;
   blogId: string;
 }
+const postService = container.get(PostsService)
+const postQueryRepo = container.get(PostsQueryRepository)
+const blogService = container.get(BlogService)
+const blogQueryRepo = container.get(BlogQueryRepository)
+const userService = container.get(UserService)
+
 export const testSeeder = {
 
   async createPosts(input: Array<PostDto>) {
-    const posts: Array<PostViewModel> = [];
+    const postIds: Array<ObjectId> = [];
+    const posts: Array<IPostView> = [];
     for (let i = 0; i < input.length; i++) {
       const postInput: PostInputModel = { ...input[0], blogId: new ObjectId(input[0].blogId) }
-      const { post } = await postsService.createPost(postInput)
-      posts.push(post!)
+      const postId = await postService.createPost(postInput)
+      postIds.push(postId)
+    }
+    for (const postId of postIds) {
+      const post = await postQueryRepo.findPostById(postId);
+      posts.push(post)
     }
     return posts
   },
 
   async createBlogs(input: Array<BlogInputModel>) {
-    const blogs: Array<BlogViewModel> = [];
+    const blogs: Array<IBlogView> = [];
+    const blogIds: Array<ObjectId> = [];
     for (let i = 0; i < input.length; i++) {
-      const { newBlog } = await blogService.createBlog(input[i])
-      blogs.push(newBlog!)
+      const { blogId } = await blogService.createBlog(input[i])
+      blogIds.push(blogId)
+    }
+    for (const blogId of blogIds) {
+      const blog = await blogQueryRepo.findBlog(blogId);
+      blogs.push(blog!)
     }
     return blogs
+  },
+
+  async createUsers(input: Array<UserInputModel>) {
+    for (let i = 0; i < input.length; i++) {
+      await userService.createUser(input[i])
+    }
   }
 }
 

@@ -1,9 +1,13 @@
+import { createApp } from "../../src/app";
 import { client, requestsCollection, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { req, UserDto } from "../test-helpers";
-import { Test } from 'supertest';
+import { UserDto } from "../test-helpers";
+import { agent, Test } from 'supertest';
 
 describe('rate limiter tests', () => {
+  let app: any;
+  let req: any
+
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
     if (!res) {
@@ -12,6 +16,8 @@ describe('rate limiter tests', () => {
     await usersCollection.drop()
     await sessionsCollection.drop()
     await requestsCollection.drop()
+    app = createApp();
+    req = agent(app);
   })
 
   afterAll(async () => {

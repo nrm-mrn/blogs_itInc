@@ -1,4 +1,3 @@
-import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
 import { PasswordRecovery, User } from "./user.entity";
 import { UUID } from "crypto";

@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
+import { injectable } from 'inversify';
 
-export const passwordHashService = {
+@injectable()
+export class PasswordHashService {
   async createHash(password: string): Promise<string> {
     const saltRounds = 10
     try {
@@ -11,7 +13,7 @@ export const passwordHashService = {
     catch (err) {
       throw new Error('Error creating password hash')
     }
-  },
+  }
 
   async compareHash(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);

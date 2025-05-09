@@ -1,19 +1,21 @@
 import jwt, { Secret } from 'jsonwebtoken'
 import { SETTINGS } from '../settings/settings'
 import { CreateRefreshTokenDto, RTokenPayload } from './auth.types'
+import { injectable } from 'inversify'
 
-export const jwtService = {
+@injectable()
+export class JwtService {
   createAccessToken(userId: string): string {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
     return jwt.sign({ userId }, secret, { expiresIn: `${SETTINGS.JWT_TIME}ms` })
-  },
+  }
 
   createRefreshToken(input: CreateRefreshTokenDto): { token: string, iat: number } {
     const secret: Secret = Buffer.from(SETTINGS.JWT_SECRET)
     const iat = Date.now()
     const token = jwt.sign({ iat, ...input }, secret, { expiresIn: `${SETTINGS.REFRESHT_TIME}ms` })
     return { token, iat }
-  },
+  }
 
   decodeToken(token: string) {
     try {
@@ -22,7 +24,7 @@ export const jwtService = {
       console.error('Could not decode token', e);
       return null
     }
-  },
+  }
 
   verifyAccessToken(token: string): { userId: string } | null {
     try {
@@ -30,7 +32,7 @@ export const jwtService = {
     } catch (err) {
       return null
     }
-  },
+  }
 
   verifyRefreshToken(token: string): RTokenPayload | null {
     try {

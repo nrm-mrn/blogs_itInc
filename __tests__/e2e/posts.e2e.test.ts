@@ -1,18 +1,24 @@
 import { ObjectId } from "mongodb";
 import { SETTINGS } from "../../src/settings/settings";
-import { req } from "../test-helpers";
+import { testSeeder } from "../test-helpers";
 import { blogsCollection, client, postsCollection, runDb } from "../../src/db/mongoDb";
-import { blogService } from "../../src/blogs/blogs.service";
-import { blogQueryRepository } from "../../src/blogs/blogsQuery.repository";
-import { postsQueryRepository } from "../../src/posts/postsQuery.repository";
-import { BlogViewModel, GetBlogsDto } from "../../src/blogs/blogs.types";
+import { BlogQueryRepository } from "../../src/blogs/blogsQuery.repository";
+import { PostsQueryRepository } from "../../src/posts/postsQuery.repository";
+import { IBlogView, GetBlogsDto, BlogInputModel } from "../../src/blogs/blogs.types";
 import { PagedResponse, SortDirection } from "../../src/shared/types/pagination.types";
-import { PostViewModel, PostInputModel } from "../../src/posts/posts.types";
+import { IPostView, PostInputModel } from "../../src/posts/posts.types";
+import { container } from "../../src/ioc";
+import { createApp } from "../../src/app";
+import { agent } from "supertest";
 
 
-describe('posts routes tests', () => {
+describe('posts e2e tests', () => {
   let buff;
   let codedAuth: string;
+  let blogsQueryRepo: BlogQueryRepository;
+  let postsQueryRepo: PostsQueryRepository;
+  let req: any;
+  let app: any;
 
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
@@ -21,26 +27,27 @@ describe('posts routes tests', () => {
     }
     await blogsCollection.drop()
     await postsCollection.drop()
-    const dbSeed = {
-      blogs: [
-        {
-          name: 'first',
-          description: 'first blog desc',
-          websiteUrl: 'https://google.com'
-        },
-        {
-          name: 'second',
-          description: 'second blog desc',
-          websiteUrl: 'https://google.com/test'
-        },
-      ]
-    }
-    for (const blog of dbSeed.blogs) {
-      await blogService.createBlog(blog);
-    }
+    const blogs: Array<BlogInputModel> = [
+      {
+        name: 'first',
+        description: 'first blog desc',
+        websiteUrl: 'https://google.com'
+      },
+      {
+        name: 'second',
+        description: 'second blog desc',
+        websiteUrl: 'https://google.com/test'
+      },
+    ]
+    await testSeeder.createBlogs(blogs)
 
     buff = Buffer.from(SETTINGS.SUPERUSER!)
     codedAuth = buff.toString('base64')
+
+    app = createApp()
+    req = agent(app)
+    blogsQueryRepo = container.get(BlogQueryRepository)
+    postsQueryRepo = container.get(PostsQueryRepository)
   })
 
   afterAll(async () => {
@@ -49,7 +56,7 @@ describe('posts routes tests', () => {
 
   it('should get 200 and empty array', async () => {
     const res = await req.get(SETTINGS.PATHS.POSTS).expect(200)
-    const postsPage: PagedResponse<PostViewModel> = res.body
+    const postsPage: PagedResponse<IPostView> = res.body
     expect(Array.isArray(postsPage.items)).toBe(true);
     expect(postsPage.items.length).toBe(0);
   })
@@ -61,7 +68,7 @@ describe('posts routes tests', () => {
       content: 'some post content',
       blogId: new ObjectId(54321234),
     }
-    const res = await req.post(SETTINGS.PATHS.POSTS)
+    await req.post(SETTINGS.PATHS.POSTS)
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(post)
       .expect(400)
@@ -76,7 +83,7 @@ describe('posts routes tests', () => {
         sortBy: 'createdAt',
       }
     }
-    const blogsPage: PagedResponse<BlogViewModel> = await blogQueryRepository.getAllBlogs(dto)
+    const blogsPage: PagedResponse<IBlogView> = await blogsQueryRepo.getAllBlogs(dto)
     const post: PostInputModel = {
       title: 'some title',
       shortDescription: 'short desc',
@@ -103,7 +110,7 @@ describe('posts routes tests', () => {
         sortBy: 'createdAt',
       }
     }
-    const blogsPage: PagedResponse<BlogViewModel> = await blogQueryRepository.getAllBlogs(dto);
+    const blogsPage: PagedResponse<IBlogView> = await blogsQueryRepo.getAllBlogs(dto);
     const post: PostInputModel = {
       title: 'another title',
       shortDescription: 'short desc',
@@ -132,7 +139,7 @@ describe('posts routes tests', () => {
       description: 'first blog desc',
       websiteUrl: 'https://google.com'
     }
-    const blogsPage: PagedResponse<BlogViewModel> = await blogQueryRepository.getAllBlogs(dto)
+    const blogsPage: PagedResponse<IBlogView> = await blogsQueryRepo.getAllBlogs(dto)
 
     await req.put(SETTINGS.PATHS.BLOGS + `/${blogsPage.items[0].id}`)
       .set({ 'authorization': 'Basic ' + codedAuth })
@@ -140,7 +147,7 @@ describe('posts routes tests', () => {
       .expect(204)
 
     const postsRes = await req.get(SETTINGS.PATHS.POSTS).expect(200)
-    const postsPage: PagedResponse<PostViewModel> = postsRes.body
+    const postsPage: PagedResponse<IPostView> = postsRes.body
 
     postsPage.items.forEach(post => {
       if (post.blogId.toString() === blogsPage.items[0].id.toString()) {
@@ -158,7 +165,7 @@ describe('posts routes tests', () => {
         sortBy: 'createdAt',
       }
     }
-    const blogsPage = await blogQueryRepository.getAllBlogs(dto)
+    const blogsPage = await blogsQueryRepo.getAllBlogs(dto)
     const post: PostInputModel = {
       title: 'updateable',
       shortDescription: 'short desc',
@@ -193,7 +200,7 @@ describe('posts routes tests', () => {
       .send(validUpdate)
       .expect(204)
 
-    const postsPage = await postsQueryRepository.getAllPosts(dto);
+    const postsPage = await postsQueryRepo.getAllPosts(dto);
 
     for (const post of postsPage.items) {
       if (post.id === res.body.id) {
@@ -211,7 +218,7 @@ describe('posts routes tests', () => {
         sortBy: 'createdAt',
       }
     }
-    const blogsPage: PagedResponse<BlogViewModel> = await blogQueryRepository.getAllBlogs(dto)
+    const blogsPage: PagedResponse<IBlogView> = await blogsQueryRepo.getAllBlogs(dto)
     const post: PostInputModel = {
       title: 'Deleteable',
       shortDescription: 'short desc',
@@ -230,7 +237,7 @@ describe('posts routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .expect(204)
 
-    const postsPage: PagedResponse<PostViewModel> = await postsQueryRepository.getAllPosts(dto);
+    const postsPage: PagedResponse<IPostView> = await postsQueryRepo.getAllPosts(dto);
     for (const post of postsPage.items) {
       if (post.id.toString() === res.body.id) {
         expect(false).toBe(true);

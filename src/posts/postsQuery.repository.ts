@@ -1,11 +1,13 @@
 import { ObjectId } from "mongodb";
 import { postsCollection } from "../db/mongoDb";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { GetPostsDto, PostViewModel } from "./posts.types";
+import { GetPostsDto, IPostView } from "./posts.types";
+import { CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
 
-export const postsQueryRepository = {
+export class PostsQueryRepository {
 
-  async getAllPosts(dto: GetPostsDto): Promise<PagedResponse<PostViewModel>> {
+  async getAllPosts(dto: GetPostsDto): Promise<PagedResponse<IPostView>> {
     const paging = dto.pagination
     const posts = await postsCollection
       .find({})
@@ -15,8 +17,15 @@ export const postsQueryRepository = {
       .toArray()
     const total = await postsCollection.countDocuments();
     const postsView = posts.map(post => {
-      const { _id, ...rest } = post
-      return { id: _id, ...rest }
+      return {
+        id: post._id.toString(),
+        title: post.title,
+        shortDescription: post.shortDescription,
+        content: post.content,
+        blogId: post.blogId.toString(),
+        blogName: post.blogName,
+        createdAt: post.createdAt,
+      }
     })
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
@@ -25,15 +34,22 @@ export const postsQueryRepository = {
       totalCount: total,
       items: postsView,
     }
-  },
+  }
 
-  async findPostById(id: ObjectId): Promise<PostViewModel | null> {
+  async findPostById(id: ObjectId): Promise<IPostView> {
     const post = await postsCollection.findOne({ _id: id })
     if (!post) {
-      return null
+      throw new CustomError('Post not found', HttpStatuses.NotFound)
     }
-    const { _id, ...rest } = post
-    return { id: _id, ...rest }
-  },
+    return {
+      id: post._id.toString(),
+      title: post.title,
+      shortDescription: post.shortDescription,
+      content: post.content,
+      blogId: post.blogId.toString(),
+      blogName: post.blogName,
+      createdAt: post.createdAt,
+    }
+  }
 
 }

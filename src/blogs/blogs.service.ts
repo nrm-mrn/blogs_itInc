@@ -1,40 +1,45 @@
-import { ObjectId } from "mongodb";
-import { blogRepository } from "./blogs.repository";
-import { postsService } from "../posts/posts.service";
-import { BlogPostInputModel, PostViewModel } from "../posts/posts.types";
-import { BlogInputModel, BlogViewModel, BlogDbModel } from "./blogs.types";
+import { ObjectId, WithId } from "mongodb";
+import { BlogRepository } from "./blogs.repository";
+import { PostsService } from "../posts/posts.service";
+import { BlogPostInputModel } from "../posts/posts.types";
+import { BlogInputModel, IBlogDb } from "./blogs.types";
+import { Blog } from "./blog.entity";
+import { inject, injectable } from "inversify";
 
-export const blogService = {
-  async createBlog(input: BlogInputModel): Promise<{ newBlog: BlogViewModel | null, error: string | null }> {
-    const datetime = new Date()
-    const datetimeISO = datetime.toISOString()
-    const newBlog: BlogDbModel = {
-      _id: new ObjectId(),
-      isMembership: false,
-      createdAt: datetimeISO,
-      ...input
-    }
-    const { error } = await blogRepository.createBlog(newBlog)
+@injectable()
+export class BlogService {
+  constructor(
+    @inject(BlogRepository)
+    private readonly blogRepository: BlogRepository,
+    @inject(PostsService)
+    private readonly postsService: PostsService,
+  ) { };
 
-    if (!error) {
-      const { _id, ...rest } = newBlog;
-      const newBlogView: BlogViewModel = { id: _id, ...rest }
-      return { newBlog: newBlogView, error: null }
-    }
-    return { newBlog: null, error: 'Failed to create a blog' }
-  },
+  async createBlog(input: BlogInputModel): Promise<{ blogId: ObjectId }> {
+    const newBlog = new Blog(
+      input.name,
+      input.description,
+      input.websiteUrl,
+      false
+    )
+    const blogId = await this.blogRepository.createBlog(newBlog)
 
-  async createPostForBlog(blogId: ObjectId, postInput: BlogPostInputModel): Promise<{ post: PostViewModel | null, error: string | null }> {
-    return postsService.createPost({ ...postInput, blogId })
-  },
+    return { blogId }
+  }
 
-  async editBlog(id: ObjectId, input: BlogInputModel): Promise<{ error: string | null }> {
+  async findBlogById(id: ObjectId): Promise<WithId<IBlogDb> | null> {
+    return this.blogRepository.findBlogById(id)
+  }
 
-    return await blogRepository.editBlog(id, input)
+  async createPostForBlog(blogId: ObjectId, postInput: BlogPostInputModel): Promise<ObjectId> {
+    return this.postsService.createPost({ ...postInput, blogId })
+  }
 
-  },
+  async editBlog(id: ObjectId, input: BlogInputModel): Promise<void> {
+    return await this.blogRepository.editBlog(id, input)
+  }
 
-  async deleteBlog(id: ObjectId): Promise<{ error: string | null }> {
-    return blogRepository.deleteBlog(id)
+  async deleteBlog(id: ObjectId): Promise<void> {
+    return this.blogRepository.deleteBlog(id)
   }
 }

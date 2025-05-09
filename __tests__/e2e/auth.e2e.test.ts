@@ -1,21 +1,23 @@
-jest.mock("../../src/security/api/middleware/requestsLimiter.middleware", () =>
-({
-  requestsLimiter: (req: any, res: any, next: NextFunction) => next(),
-}))
 import { client, requestsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, loginUser, req, testingDtosCreator, UserDto } from "../test-helpers";
-import { app } from "../../src/app";
-import request from 'supertest';
+import request, { agent } from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
-import { nodemailerService } from "../../src/auth/email.service";
+import { MailerService } from "../../src/auth/email.service";
 import { IUserDb, IUserView } from "../../src/users/user.types";
-import { usersRepository } from "../../src/users/users.repository";
+import { UsersRepository } from "../../src/users/users.repository";
 import { randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
-import { NextFunction } from "express";
+import { container } from "../../src/ioc";
+import { createApp } from "../../src/app";
+import { registerUser, loginUser, testingDtosCreator, UserDto } from "../test-helpers";
+import { ApiRequestService } from "../../src/security/apiRequest.service";
+
 
 describe('auth e2e tests', () => {
+  let usersRepository: UsersRepository;
+  let app: any;
+  let req: any;
+  let nodemailerService: MailerService;
 
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
@@ -23,7 +25,15 @@ describe('auth e2e tests', () => {
       process.exit(1)
     }
     await usersCollection.drop()
+    usersRepository = container.get(UsersRepository)
+    nodemailerService = container.get(MailerService)
+    app = createApp();
+    req = agent(app)
+    jest.spyOn(ApiRequestService.prototype, 'getDocsCountForPeriod').mockImplementation(() => Promise.resolve(1))
+    jest.spyOn(MailerService.prototype, 'sendEmail').mockImplementation(() => Promise.resolve(true))
+
   })
+
 
   beforeEach(async () => {
     await usersCollection.drop();
@@ -46,8 +56,9 @@ describe('auth e2e tests', () => {
       pass: 'qwerty1',
       email: 'test@yandex.ru'
     }
-    await createUser(validUser);
-    await createUser(validUser2);
+    await registerUser(req, validUser);
+    await registerUser(req, validUser2);
+
 
     let res = await req.post(SETTINGS.PATHS.AUTH + '/login')
       .send({ loginOrEmail: validUser.login, password: 'invalid' })
@@ -92,8 +103,8 @@ describe('auth e2e tests', () => {
 
   it('Should get current user info', async () => {
     const userDto = testingDtosCreator.createUserDto({})
-    await createUser();
-    const { accessToken } = await loginUser();
+    await registerUser(req);
+    const { accessToken } = await loginUser(req);
     let res = await req.get(SETTINGS.PATHS.AUTH + '/me')
       .set({ 'authorization': 'Bearer ' + accessToken })
       .expect(200)
@@ -107,7 +118,7 @@ describe('auth e2e tests', () => {
 
   it('Should reissue refresh token and set in cookie', async () => {
     const userDto = testingDtosCreator.createUserDto({})
-    await createUser();
+    await registerUser(req);
     let res = await req
       .post(SETTINGS.PATHS.AUTH + '/login')
       .send({ loginOrEmail: userDto.email, password: userDto.pass })
@@ -141,7 +152,7 @@ describe('auth e2e tests', () => {
 
   it('should log out user', async () => {
     const userDto = testingDtosCreator.createUserDto({})
-    await createUser();
+    await registerUser(req);
     //need to send the request so that cookie is set
     await req
       .post(SETTINGS.PATHS.AUTH + '/login')
@@ -164,12 +175,6 @@ describe('auth e2e tests', () => {
 
 
   describe('password recovery tests', () => {
-    nodemailerService.sendEmail = jest
-      .fn()
-      .mockImplementation(
-        (email: string, template: string) =>
-          Promise.resolve(true)
-      );
 
     beforeEach(async () => {
       await usersCollection.drop();
@@ -178,7 +183,7 @@ describe('auth e2e tests', () => {
 
     it('should reset a password', async () => {
       const userDto = testingDtosCreator.createUserDto({})
-      const user: IUserView = await createUser();
+      const user: IUserView = await registerUser(req);
 
       await req
         .post(SETTINGS.PATHS.AUTH + '/password-recovery')

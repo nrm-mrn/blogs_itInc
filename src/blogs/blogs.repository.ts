@@ -1,42 +1,53 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { blogsCollection } from "../db/mongoDb";
-import { postsRepository } from "../posts/posts.repository";
-import { blogQueryRepository } from "./blogsQuery.repository";
-import { BlogDbModel, BlogInputModel } from "./blogs.types";
+import { PostsRepository } from "../posts/posts.repository";
+import { BlogInputModel, IBlogDb } from "./blogs.types";
+import { Blog } from "./blog.entity";
+import { CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
+import { inject, injectable } from "inversify";
 
-export const blogRepository = {
+@injectable()
+export class BlogRepository {
+  constructor(
+    @inject(PostsRepository)
+    private readonly postsRepository: PostsRepository
+  ) { }
 
-  async createBlog(newBlog: BlogDbModel): Promise<{ error: string | null }> {
+  async createBlog(newBlog: Blog): Promise<ObjectId> {
     const insertRes = await blogsCollection.insertOne(newBlog)
     if (insertRes.acknowledged) {
-      return { error: null }
+      return insertRes.insertedId
     }
-    return { error: 'Failed to create a blog' }
-  },
+    throw new Error('Failed to insert a blog in db')
+  }
 
-  async editBlog(id: ObjectId, input: BlogInputModel): Promise<{ error: string | null }> {
-    const target = await blogQueryRepository.findBlog(id);
+  async findBlogById(id: ObjectId): Promise<WithId<IBlogDb> | null> {
+    return blogsCollection.findOne({ _id: id })
+  }
+
+  async editBlog(id: ObjectId, input: BlogInputModel): Promise<void> {
+    const target = await this.findBlogById(id);
     if (!target) {
-      return { error: 'Id does not exist' }
+      throw new CustomError('blog does not exist', HttpStatuses.NotFound)
     }
-    const res = await blogsCollection.updateOne({ _id: id }, { $set: { ...input } })
-
+    await blogsCollection.updateOne({ _id: id }, { $set: { ...input } })
     if (target.name !== input.name) {
-      await postsRepository.updatePostsByBlogId(id, { blogName: input.name })
+      await this.postsRepository.updatePostsByBlogId(id, { blogName: input.name })
     }
-    return { error: null }
-  },
+    return;
+  }
 
-  async deleteBlog(id: ObjectId): Promise<{ error: string | null }> {
-    const target = await blogQueryRepository.findBlog(id);
+  async deleteBlog(id: ObjectId): Promise<void> {
+    const target = await this.findBlogById(id);
     if (!target) {
-      return { error: 'Id does not exist' }
+      throw new CustomError('Blog does not exist', HttpStatuses.NotFound)
     }
     const res = await blogsCollection.deleteOne({ _id: id })
     if (res.acknowledged) {
-      await postsRepository.deletePostsByBlogId(id)
-      return { error: null }
+      await this.postsRepository.deletePostsByBlogId(id)
+      return;
     }
-    return { error: 'failed to delete the blog' }
+    throw new Error('Failed to delete a blog')
   }
 }

@@ -1,15 +1,18 @@
 import { blogsCollection, client, postsCollection, runDb } from "../../src/db/mongoDb";
-import { blogService } from "../../src/blogs/blogs.service";
 import { SETTINGS } from "../../src/settings/settings";
-import { BlogInputModel, BlogViewModel, GetBlogsQuery } from "../../src/blogs/blogs.types";
+import { BlogInputModel, IBlogView, GetBlogsQuery } from "../../src/blogs/blogs.types";
 import { PagedResponse, PagingFilter, SortDirection } from "../../src/shared/types/pagination.types";
-import { req } from "../test-helpers";
-import { BlogPostInputModel, PostViewModel } from "../../src/posts/posts.types";
+import { testSeeder } from "../test-helpers";
+import { BlogPostInputModel, IPostView } from "../../src/posts/posts.types";
+import { createApp } from "../../src/app";
+import { agent } from "supertest";
 
-describe('blogs routes tests', () => {
-
+describe('blogs e2e tests', () => {
   let buff;
   let codedAuth: string;
+  let req: any;
+  let app: any;
+
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
     if (!res) {
@@ -19,6 +22,8 @@ describe('blogs routes tests', () => {
     await postsCollection.drop()
     buff = Buffer.from(SETTINGS.SUPERUSER!);
     codedAuth = buff.toString('base64')
+    app = createApp()
+    req = agent(app)
   })
 
   afterAll(async () => {
@@ -29,7 +34,7 @@ describe('blogs routes tests', () => {
   it('Should get 200 and an empty array', async () => {
 
     const res = await req.get(SETTINGS.PATHS.BLOGS).expect(200)
-    const blogsPage: PagedResponse<BlogViewModel> = res.body
+    const blogsPage: PagedResponse<IBlogView> = res.body
     expect(Array.isArray(blogsPage.items)).toBe(true);
     expect(blogsPage.items.length).toBe(0);
 
@@ -147,7 +152,7 @@ describe('blogs routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(validBlog)
       .expect(201)
-    const blogObj: BlogViewModel = res.body
+    const blogObj: IBlogView = res.body
 
     const postInput: BlogPostInputModel = {
       title: 'post for bl',
@@ -158,7 +163,7 @@ describe('blogs routes tests', () => {
       .set({ 'authorization': 'Basic ' + codedAuth })
       .send(postInput)
       .expect(201)
-    const postObj: PostViewModel = res.body
+    const postObj: IPostView = res.body
 
     expect(postObj.title).toEqual(postInput.title)
     expect(postObj.blogId).toEqual(blogObj.id)
@@ -173,13 +178,15 @@ describe('blogs routes tests', () => {
       websiteUrl: 'https://google.com'
     }
     const total = 25
+    const blogInputs: Array<BlogInputModel> = [];
     for (let i = 0; i < total; i++) {
-      await blogService.createBlog({
+      blogInputs.push({
         name: `${i}` + sampleBlog.name,
         description: sampleBlog.description + `${i}`,
         websiteUrl: sampleBlog.websiteUrl
       })
     }
+    await testSeeder.createBlogs(blogInputs);
 
     const allBlogs = await blogsCollection.find({}).toArray()
     expect(allBlogs.length).toEqual(total)
@@ -194,7 +201,7 @@ describe('blogs routes tests', () => {
 
     //first page
     let rawRes = await req.get(SETTINGS.PATHS.BLOGS).query(paging)
-    let res: PagedResponse<BlogViewModel> = rawRes.body
+    let res: PagedResponse<IBlogView> = rawRes.body
     expect(res.pageSize).toEqual(paging.pageSize)
     expect(res.totalCount).toEqual(total);
     expect(res.page).toEqual(paging.pageNumber)
@@ -217,5 +224,5 @@ describe('blogs routes tests', () => {
     rawRes = await req.get(SETTINGS.PATHS.BLOGS).query(query)
     res = rawRes.body
     expect(res.totalCount).toEqual(12);
-  })
+  }, 10000)
 })

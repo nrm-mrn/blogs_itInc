@@ -2,24 +2,39 @@ import { AuthSuccess, CreateRefreshTokenDto, LoginDto, RTokenPayload } from "./a
 import { ObjectId, WithId } from "mongodb";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
-import { jwtService } from "./jwt.service";
-import { passwordHashService } from "./passHash.service";
+import { JwtService } from "./jwt.service";
+import { PasswordHashService } from "./passHash.service";
 import { ConfirmPasswordDto, IUserDb, UserInputModel } from "../users/user.types";
-import { nodemailerService } from "./email.service";
+import { MailerService } from "./email.service";
 import { emailTemplates } from "./email.templates";
-import { sessionsService } from "../security/sessions.service";
+import { SessionsService } from "../security/sessions.service";
 import { CreateSessionDto } from "../security/session.types";
-import { userService } from "../users/users.service";
+import { UserService } from "../users/users.service";
 import { UUID } from "crypto";
+import { inject, injectable } from "inversify";
 
-export const authService = {
+@injectable()
+export class AuthService {
+
+  constructor(
+    @inject(SessionsService)
+    private readonly sessionsService: SessionsService,
+    @inject(UserService)
+    private readonly userService: UserService,
+    @inject(PasswordHashService)
+    private readonly passHashService: PasswordHashService,
+    @inject(MailerService)
+    private readonly nomailerService: MailerService,
+    @inject(JwtService)
+    private readonly jwtService: JwtService,
+  ) { };
 
   async checkCredentials(credentials: LoginDto): Promise<AuthSuccess> {
     let user: WithId<IUserDb>;
     let isValidPass: boolean;
     try {
-      user = await userService.getUserByLoginOrEmail(credentials.loginOrEmail);
-      isValidPass = await passwordHashService.compareHash(credentials.password, user.passwordHash);
+      user = await this.userService.getUserByLoginOrEmail(credentials.loginOrEmail);
+      isValidPass = await this.passHashService.compareHash(credentials.password, user.passwordHash);
       if (!isValidPass) {
         throw new CustomError('Wrong login or password', HttpStatuses.Unauthorized)
       }
@@ -34,8 +49,8 @@ export const authService = {
       userId: user._id.toString(),
       deviceId: new ObjectId().toString(),
     }
-    const accessToken = jwtService.createAccessToken(user._id.toString())
-    const { token: rToken, iat } = jwtService.createRefreshToken(rtInput)
+    const accessToken = this.jwtService.createAccessToken(user._id.toString())
+    const { token: rToken, iat } = this.jwtService.createRefreshToken(rtInput)
 
     const sessionInput: CreateSessionDto = {
       deviceId: rtInput.deviceId,
@@ -44,15 +59,15 @@ export const authService = {
       ip: credentials.ip,
       title: credentials.title,
     }
-    await sessionsService.saveSession(sessionInput);
+    await this.sessionsService.saveSession(sessionInput);
 
     return { accessToken, refreshToken: rToken }
-  },
+  }
 
   async registerUser(newUserDto: UserInputModel): Promise<ObjectId> {
-    const { userId } = await userService.createUser(newUserDto);
+    const { userId } = await this.userService.createUser(newUserDto);
 
-    const user = await userService.getUserById(userId);
+    const user = await this.userService.getUserById(userId);
 
     if (!user) {
       throw new Error('Failed to create a new user entry')
@@ -61,66 +76,66 @@ export const authService = {
     const email = emailTemplates.registrationEmail(user.emailConfirmation.confirmationCode)
 
 
-    nodemailerService.sendEmail(
+    this.nomailerService.sendEmail(
       user.email,
       email,
     ).catch(err => console.error(`error sending email: ${err}`))
 
     return userId
-  },
+  }
 
   async confirmEmail(code: string): Promise<void> {
     this.validateUuid(code);
     const confirmationCode = code as UUID
-    await userService.confirmEmail(confirmationCode);
+    await this.userService.confirmEmail(confirmationCode);
     return;
-  },
+  }
 
   async resendConfirmation(email: string): Promise<void> {
-    const newConfirmation = await userService.updateEmailConfirmation(email)
+    const newConfirmation = await this.userService.updateEmailConfirmation(email)
     const emailTemplate = emailTemplates.registrationEmail(newConfirmation.confirmationCode)
-    nodemailerService.sendEmail(
+    this.nomailerService.sendEmail(
       email,
       emailTemplate,
     ).catch(err => console.error(`error sending email: ${err}`))
     return
-  },
+  }
 
   async reissueTokensPair(token: string): Promise<AuthSuccess> {
     //NOTE: should always work since guard check passed
-    const payload = jwtService.verifyRefreshToken(token) as unknown as RTokenPayload
+    const payload = this.jwtService.verifyRefreshToken(token) as unknown as RTokenPayload
 
-    const session = await sessionsService.getSession(payload.deviceId, payload.iat);
+    const session = await this.sessionsService.getSession(payload.deviceId, payload.iat);
     if (!session) {
       throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
     }
 
-    const { token: newRToken, iat } = jwtService.createRefreshToken(
+    const { token: newRToken, iat } = this.jwtService.createRefreshToken(
       {
         deviceId: payload.deviceId,
         userId: payload.userId,
       });
-    const accessToken = jwtService.createAccessToken(payload.userId)
-    await sessionsService.refreshSession(
+    const accessToken = this.jwtService.createAccessToken(payload.userId)
+    await this, this.sessionsService.refreshSession(
       payload.deviceId,
       iat
     )
     return { accessToken, refreshToken: newRToken }
-  },
+  }
 
   async recoverPassword(email: string): Promise<void> {
-    const recoveryObj = await userService.setPasswordRecovery(email);
+    const recoveryObj = await this.userService.setPasswordRecovery(email);
     if (!recoveryObj) {
       return
     }
     const emailTemplate = emailTemplates.passwordRecovery(recoveryObj.confirmationCode);
 
-    await nodemailerService.sendEmail(
+    this.nomailerService.sendEmail(
       email,
       emailTemplate
     ).catch(err => console.error(`Error sending email: ${err}`))
     return;
-  },
+  }
 
   async confirmPassword(code: string, password: string): Promise<void> {
     this.validateUuid(code);
@@ -128,8 +143,8 @@ export const authService = {
       code: code as UUID,
       password
     }
-    await userService.confirmPassword(inputDto);
-  },
+    await this.userService.confirmPassword(inputDto);
+  }
 
   validateUuid(code: string) {
     const isUuid = new RegExp(
@@ -138,5 +153,5 @@ export const authService = {
     if (!isUuid) {
       throw new CustomError('provided code is not a valid uuid', HttpStatuses.BadRequest, { errorsMessages: [{ field: 'recoveryCode', message: 'invalid UUID' }] })
     }
-  },
+  }
 }

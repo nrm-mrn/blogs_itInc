@@ -1,25 +1,35 @@
 import { ObjectId } from "mongodb";
-import { CommentViewModel, GetCommentsDto } from "./comments.types";
+import { ICommentView, GetCommentsDto } from "./comments.types";
 import { commentsCollection } from "../db/mongoDb";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { postsQueryRepository } from "../posts/postsQuery.repository";
+import { PostsQueryRepository } from "../posts/postsQuery.repository";
+import { inject, injectable } from "inversify";
 
-export const commentsQueryRepository = {
+@injectable()
+export class CommentsQueryRepository {
 
-  async getCommentById(id: ObjectId): Promise<{ data: CommentViewModel }> {
+  constructor(
+    @inject(PostsQueryRepository)
+    private readonly postsQueryRepo: PostsQueryRepository
+  ) { }
+
+  async getCommentById(id: ObjectId): Promise<ICommentView> {
     const comment = await commentsCollection.findOne({ _id: id });
     if (!comment) {
       throw new CustomError('Comment id not found', HttpStatuses.NotFound)
     }
-    const { _id, postId, ...rest } = comment
-    const result = { data: { id: _id, ...rest } }
-    return result
-  },
+    return {
+      id: comment._id.toString(),
+      content: comment.content,
+      commentatorInfo: comment.commentatorInfo,
+      createdAt: comment.createdAt
+    }
+  }
 
-  async getComments(dto: GetCommentsDto): Promise<PagedResponse<CommentViewModel>> {
-    const post = await postsQueryRepository.findPostById(dto.postId)
+  async getComments(dto: GetCommentsDto): Promise<PagedResponse<ICommentView>> {
+    const post = await this.postsQueryRepo.findPostById(dto.postId)
     if (!post) {
       throw new CustomError('Post with provided id does not exist', HttpStatuses.NotFound)
     }
@@ -33,8 +43,12 @@ export const commentsQueryRepository = {
       .toArray()
     const total = await commentsCollection.countDocuments(filter)
     const commentsView = comments.map(comment => {
-      const { _id, postId, ...rest } = comment
-      return { id: _id, ...rest }
+      return {
+        id: comment._id.toString(),
+        content: comment.content,
+        commentatorInfo: comment.commentatorInfo,
+        createdAt: comment.createdAt,
+      }
     })
     return {
       pagesCount: Math.ceil(total / paging.pageSize),

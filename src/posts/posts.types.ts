@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
+import { Post } from "./post.entity";
 
 export type GetPostsQuery = {} & PagingQuery
 
@@ -14,31 +15,30 @@ export type GetPostCommentsQuery = {
 export type GetPostCommentsSanitizedQuery = {
 } & PagingFilter
 
-export type PostViewModel = {
-  id: ObjectId;
+export interface IPostView {
+  id: string;
   title: string;
   shortDescription: string;
   content: string;
-  blogId: ObjectId;
+  blogId: string;
   blogName: string;
   createdAt: string;
 }
 
-export type PostDbModel = {
-  _id: ObjectId;
-  title: string;
-  shortDescription: string;
-  content: string;
-  blogId: ObjectId;
-  blogName: string;
-  createdAt: string;
-}
+export interface IPostDb extends Post { }
 
 export type PostInputModel = {
   title: string;
   shortDescription: string;
   content: string;
   blogId: ObjectId;
+}
+
+export type PostUpdateDto = {
+  title: string;
+  shortDescription: string;
+  content: string;
+  blogName: string;
 }
 
 export type BlogPostInputModel = {

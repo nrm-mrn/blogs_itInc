@@ -1,28 +1,19 @@
 import { ObjectId } from "mongodb";
-import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
+import { PagingFilter } from "../shared/types/pagination.types";
+import { Comment, CommentatorInfo } from "./comment.entity";
 
 export type CommentInputModel = {
   content: string;
 }
 
-export type CommentatorInfo = {
-  userId: string;
-  userLogin: string;
-}
-
-export type CommentViewModel = {
-  id: ObjectId;
+export interface ICommentView {
+  id: string;
   content: string;
   commentatorInfo: CommentatorInfo;
   createdAt: string;
 }
 
-export type CommentDbModel = {
-  postId: ObjectId;
-  content: string;
-  commentatorInfo: CommentatorInfo;
-  createdAt: string;
-}
+export interface ICommentDb extends Comment { }
 
 export type CreateCommentDto = {
   userId: string;

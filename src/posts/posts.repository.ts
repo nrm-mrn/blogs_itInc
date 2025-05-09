@@ -1,42 +1,54 @@
 import { ObjectId } from "mongodb";
 import { postsCollection } from "../db/mongoDb";
-import { postsQueryRepository } from "./postsQuery.repository";
-import { commentsRepository } from "../comments/comments.repository";
-import { PostDbModel, PostInputModel, PostViewModel } from "./posts.types";
+import { CommentsRepository } from "../comments/comments.repository";
+import { IPostDb, PostInputModel, PostUpdateDto } from "./posts.types";
+import { inject, injectable } from "inversify";
+import { Post } from "./post.entity";
 
-export const postsRepository = {
+@injectable()
+export class PostsRepository {
 
-  async createPost(newPost: PostDbModel): Promise<{ post: PostDbModel | null, error: string | null }> {
+  constructor(
+    @inject(CommentsRepository)
+    private readonly commentsRepository: CommentsRepository) { };
+
+  async createPost(newPost: Post): Promise<ObjectId> {
     const insertRes = await postsCollection.insertOne(newPost);
     if (insertRes.acknowledged) {
-      return { post: newPost, error: null }
+      return insertRes.insertedId
     }
-    return { post: null, error: 'failed to create a post' }
-  },
+    throw new Error('Failed to create a post')
+  }
 
-  async editPost(id: ObjectId, input: PostInputModel): Promise<{ error: string | null }> {
-    const target = await postsQueryRepository.findPostById(id);
-    if (!target) {
-      return { error: 'Id does not exist' }
+  async getPost(id: ObjectId): Promise<IPostDb | null> {
+    const post = await postsCollection.findOne({ _id: id })
+    if (!post) {
+      return null
     }
+    return post
+  }
+
+  async editPost(id: ObjectId, input: PostInputModel): Promise<void> {
     const res = await postsCollection.updateOne({ _id: id }, {
       $set: { ...input, blogId: new ObjectId(input.blogId) }
     })
     if (res.acknowledged) {
-      return { error: null }
+      return
     }
-    return { error: 'Update failed' }
-  },
+    throw new Error('Failed to update post')
+  }
 
-  async updatePostsByBlogId(blogId: ObjectId, input: Partial<PostViewModel>): Promise<{ error: string } | undefined> {
+  async updatePostsByBlogId(blogId: ObjectId, input: Partial<PostUpdateDto>): Promise<void> {
     const res = await postsCollection.updateMany({ "blogId": blogId }, {
-      $set: { ...input }
+      $set: {
+        ...input
+      }
     })
     if (res.acknowledged) {
       return
     }
-    return { error: 'Update failed' }
-  },
+    throw new Error('Failed to update posts by blogid')
+  }
 
   async deletePostsByBlogId(blogId: ObjectId): Promise<{ error: string } | undefined> {
     const res = await postsCollection.deleteMany({ "blogId": blogId })
@@ -44,18 +56,14 @@ export const postsRepository = {
       return
     }
     return { error: 'Deletion failed' }
-  },
+  }
 
-  async deletePost(id: ObjectId): Promise<{ error: string | null }> {
-    const post = await postsQueryRepository.findPostById(id)
-    if (!post) {
-      return { error: 'post not found' }
-    }
-    await commentsRepository.deleteCommentsByPost(id)
+  async deletePost(id: ObjectId): Promise<void> {
+    await this.commentsRepository.deleteCommentsByPost(id)
     const res = await postsCollection.deleteOne({ _id: id })
     if (res.acknowledged) {
-      return { error: null }
+      return
     }
-    return { error: 'Deletion failed' }
+    throw new Error('Failed to delete a post')
   }
 }

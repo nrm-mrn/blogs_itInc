@@ -1,25 +1,30 @@
-import { NextFunction, Request, Response, Router } from "express";
-import { refreshTokenGuard } from "../../auth/guards/refreshTGuard";
+import { NextFunction, Request, Response } from "express";
 import { IDeviceView } from "../session.types";
-import { sessionsQueryRepository } from "../sessions.queryRepository";
+import { SessionsQueryRepository } from "../sessions.queryRepository";
 import { RTokenPayload } from "../../auth/auth.types";
-import { jwtService } from "../../auth/jwt.service";
+import { JwtService } from "../../auth/jwt.service";
 import { RequestWithParams } from "../../shared/types/requests.types";
-import { sessionsService } from "../sessions.service";
-import { paramDeviceIdValidator } from "./middleware/sessions.validators";
+import { SessionsService } from "../sessions.service";
 import { HttpStatuses } from "../../shared/types/httpStatuses";
-import { inputValidationResultMiddleware } from "../../shared/middlewares/validationResult.middleware";
+import { inject, injectable } from "inversify";
 
-export const securityRouter = Router({});
+@injectable()
+export class SecurityController {
+  constructor(
+    @inject(SessionsQueryRepository)
+    private readonly sessionsQueryRepo: SessionsQueryRepository,
+    @inject(SessionsService)
+    private readonly sessionsService: SessionsService,
+    @inject(JwtService)
+    private readonly jwtService: JwtService,
+  ) { }
 
-securityRouter.get('/devices',
-  refreshTokenGuard,
-  async (req: Request, res: Response<IDeviceView[]>, next: NextFunction) => {
+  async getDevices(req: Request, res: Response<IDeviceView[]>, next: NextFunction) {
     try {
       const token = req.cookies.refreshToken as string;
-      const rTokenPayload: RTokenPayload = jwtService.verifyRefreshToken(token)!;
+      const rTokenPayload: RTokenPayload = this.jwtService.verifyRefreshToken(token)!;
 
-      const sessions = await sessionsQueryRepository.getSessions(rTokenPayload.userId)
+      const sessions = await this.sessionsQueryRepo.getSessions(rTokenPayload.userId)
       if (!sessions || sessions.length < 1) {
         res.sendStatus(500)
         return
@@ -30,33 +35,23 @@ securityRouter.get('/devices',
       next(err)
     }
   }
-)
 
-securityRouter.delete('/devices/:deviceId',
-  refreshTokenGuard,
-  paramDeviceIdValidator,
-  inputValidationResultMiddleware,
-  async (req: RequestWithParams<{ deviceId: string }>, res: Response, next: NextFunction) => {
+  async deleteAnotherSession(req: RequestWithParams<{ deviceId: string }>, res: Response, next: NextFunction) {
     try {
       const token = req.cookies.refreshToken as string;
-      await sessionsService.deleteAnotherSession(token, req.params.deviceId);
+      await this.sessionsService.deleteAnotherSession(token, req.params.deviceId);
       res.sendStatus(204)
     } catch (err) {
       next(err);
     }
   }
-)
 
-securityRouter.delete('/devices',
-  refreshTokenGuard,
-  async (req: Request, res: Response, next: NextFunction) => {
+  async deleteOtherSessions(req: Request, res: Response, next: NextFunction) {
     try {
-      await sessionsService.deleteOtherSessions(req.cookies.refreshToken)
+      await this.sessionsService.deleteOtherSessions(req.cookies.refreshToken)
       res.sendStatus(204)
     } catch (err) {
       next(err);
     }
   }
-
-)
-
+}

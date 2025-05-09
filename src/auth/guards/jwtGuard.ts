@@ -1,7 +1,11 @@
 import { NextFunction, Response } from "express";
-import { jwtService } from "../jwt.service";
+import { JwtService } from "../jwt.service";
 import { RequestWithUserId } from "../../shared/types/requests.types";
 import { IdType } from "../../shared/types/id.type";
+import { container } from "../../ioc";
+
+//TODO: get rid of service locator
+const jwtService = container.get(JwtService);
 
 export const jwtGuard = (req: RequestWithUserId<{ id: string }>, res: Response, next: NextFunction) => {
   if (!req.headers.authorization) {

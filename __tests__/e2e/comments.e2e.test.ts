@@ -1,18 +1,23 @@
 import { ObjectId } from "mongodb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUsers, loginUser, PostDto, req, testingDtosCreator, testSeeder } from "../test-helpers";
+import { createUsers, loginUser, PostDto, testingDtosCreator, testSeeder } from "../test-helpers";
 import { blogsCollection, client, commentsCollection, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
-import { BlogViewModel } from "../../src/blogs/blogs.types";
+import { IBlogView } from "../../src/blogs/blogs.types";
 import { PagedResponse } from "../../src/shared/types/pagination.types";
-import { PostViewModel } from "../../src/posts/posts.types";
-import { CommentInputModel, CommentViewModel } from "../../src/comments/comments.types";
+import { IPostView } from "../../src/posts/posts.types";
+import { CommentInputModel, ICommentView } from "../../src/comments/comments.types";
 import { IUserView } from "../../src/users/user.types";
+import { createApp } from "../../src/app";
+import { agent } from "supertest";
+import TestAgent from "supertest/lib/agent";
 
 
-describe('comments routes test', () => {
+describe('comments e2e test', () => {
   let users: Array<IUserView>;
-  let blogs: Array<BlogViewModel>;
-  let posts: Array<PostViewModel>;
+  let blogs: Array<IBlogView>;
+  let posts: Array<IPostView>;
+  let app: any;
+  let req: TestAgent;
 
 
   beforeAll(async () => {
@@ -25,7 +30,10 @@ describe('comments routes test', () => {
     await postsCollection.drop()
     await commentsCollection.drop()
 
-    users = await createUsers(2)
+    app = createApp();
+    req = agent(app);
+
+    users = await createUsers(req, 2)
     const blogsInput = testingDtosCreator.createBlogsDto(3)
     blogs = await testSeeder.createBlogs(blogsInput);
     const postsInput: Array<PostDto> = [];
@@ -43,7 +51,7 @@ describe('comments routes test', () => {
   it('should get 200 and 404 on get comments for post', async () => {
     const postId = posts[0].id
     const res = await req.get(SETTINGS.PATHS.POSTS + `/${postId}/comments`).expect(200)
-    const commentsPage: PagedResponse<CommentViewModel> = res.body
+    const commentsPage: PagedResponse<ICommentView> = res.body
     expect(Array.isArray(commentsPage.items)).toBe(true);
     expect(commentsPage.items.length).toBe(0);
     const invailPost = new ObjectId()
@@ -62,7 +70,7 @@ describe('comments routes test', () => {
       .set({ 'authorization': 'Bearer ' + 'sdfas' })
       .send(validComment)
       .expect(401)
-    const { accessToken } = await loginUser({ loginOrEmail: users[0].login, password: '12345678' });
+    const { accessToken } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
     let res = await req.post(SETTINGS.PATHS.POSTS + `/${postId}/comments`)
       .set({ 'authorization': 'Bearer ' + accessToken })
       .send(invalidComment)
@@ -91,7 +99,7 @@ describe('comments routes test', () => {
       }
     ))
     res = await req.get(SETTINGS.PATHS.POSTS + `/${postId}/comments`).expect(200)
-    const commentsPage: PagedResponse<CommentViewModel> = res.body
+    const commentsPage: PagedResponse<ICommentView> = res.body
     expect(commentsPage.items.length).toBe(1);
   })
 
@@ -99,7 +107,7 @@ describe('comments routes test', () => {
     const validComment = { content: 'new valid comment for post' }
     const updatedComment = { content: 'updated comment content' }
     const postId = posts[1].id
-    let { accessToken: token1 } = await loginUser({ loginOrEmail: users[0].login, password: '12345678' });
+    let { accessToken: token1 } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
     let res = await req.post(SETTINGS.PATHS.POSTS + `/${postId}/comments`)
       .set({ 'authorization': 'Bearer ' + token1 })
       .send(validComment)
@@ -113,7 +121,7 @@ describe('comments routes test', () => {
       .expect(401)
 
     //should not edit not own comment
-    let { accessToken: token2 } = await loginUser({ loginOrEmail: users[1].login, password: '12345678' });
+    let { accessToken: token2 } = await loginUser(req, { loginOrEmail: users[1].login, password: '12345678' });
     res = await req.put(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
       .set({ 'authorization': 'Bearer ' + token2 })
       .send(updatedComment)
@@ -133,7 +141,7 @@ describe('comments routes test', () => {
       .expect(204)
 
     res = await req.get(SETTINGS.PATHS.POSTS + `/${postId}/comments`).expect(200)
-    const commentsPage: PagedResponse<CommentViewModel> = res.body
+    const commentsPage: PagedResponse<ICommentView> = res.body
     expect(commentsPage.items[0].content).toEqual(updatedComment.content);
 
   })
@@ -141,7 +149,7 @@ describe('comments routes test', () => {
   it('should delete a comment', async () => {
     const validComment = { content: 'new valid comment for post for deletion' }
     const postId = posts[2].id
-    let { accessToken: token1 } = await loginUser({ loginOrEmail: users[0].login, password: '12345678' });
+    let { accessToken: token1 } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
     let res = await req.post(SETTINGS.PATHS.POSTS + `/${postId}/comments`)
       .set({ 'authorization': 'Bearer ' + token1 })
       .send(validComment)
@@ -154,7 +162,7 @@ describe('comments routes test', () => {
       .expect(401)
 
     //should not delete not own comment
-    let { accessToken: token2 } = await loginUser({ loginOrEmail: users[1].login, password: '12345678' });
+    let { accessToken: token2 } = await loginUser(req, { loginOrEmail: users[1].login, password: '12345678' });
     res = await req.delete(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
       .set({ 'authorization': 'Bearer ' + token2 })
       .expect(403)
@@ -171,7 +179,7 @@ describe('comments routes test', () => {
       .expect(204)
 
     res = await req.get(SETTINGS.PATHS.POSTS + `/${postId}/comments`).expect(200)
-    const commentsPage: PagedResponse<CommentViewModel> = res.body
+    const commentsPage: PagedResponse<ICommentView> = res.body
     expect(commentsPage.items.length).toBe(0)
   })
 })

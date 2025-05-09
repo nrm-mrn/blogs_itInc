@@ -4,18 +4,23 @@ jest.mock("../../src/security/api/middleware/requestsLimiter.middleware", () =>
 }))
 import { client, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, req, testingDtosCreator, UserDto } from "../test-helpers";
-import { app } from "../../src/app";
-import request from 'supertest';
+import { registerUser, testingDtosCreator, UserDto } from "../test-helpers";
+import { createApp } from "../../src/app";
+import request, { agent } from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
 import { AuthSuccess, LoginBody } from "../../src/auth/auth.types";
 import { IDeviceView, ISessionDb } from "../../src/security/session.types";
-import { jwtService } from "../../src/auth/jwt.service";
+import { JwtService } from "../../src/auth/jwt.service";
 import { ObjectId } from "mongodb";
-import { sessionsQueryRepository } from "../../src/security/sessions.queryRepository";
+import { SessionsQueryRepository } from "../../src/security/sessions.queryRepository";
 import { NextFunction } from "express";
+import { container } from "../../src/ioc";
 
 describe('sessions e2e tests', () => {
+  let sessionsQueryRepo: SessionsQueryRepository;
+  let jwtService: JwtService;
+  let app: any;
+  let req: any
 
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
@@ -24,6 +29,10 @@ describe('sessions e2e tests', () => {
     }
     await usersCollection.drop()
     await sessionsCollection.drop()
+    sessionsQueryRepo = container.get(SessionsQueryRepository);
+    jwtService = container.get(JwtService)
+    app = createApp();
+    req = agent(app);
   })
 
   afterAll(async () => {
@@ -37,7 +46,7 @@ describe('sessions e2e tests', () => {
   let oldDev1Tokens: AuthSuccess
   it('Should login 4 devices for a user', async () => {
     const validUser: UserDto = testingDtosCreator.createUserDto({})
-    await createUser(validUser);
+    await registerUser(req, validUser);
     const loginBody: LoginBody = {
       loginOrEmail: validUser.login,
       password: validUser.pass,
@@ -133,7 +142,7 @@ describe('sessions e2e tests', () => {
       .delete(SETTINGS.PATHS.SECURITY + `/devices/sdf2342`)
       .set('Cookie', `refreshToken=${device1tokens.refreshToken}`)
       .expect(HttpStatuses.BadRequest)
-    let sessions = await sessionsQueryRepository.getSessions(dev2payload?.userId);
+    let sessions = await sessionsQueryRepo.getSessions(dev2payload?.userId);
     expect(sessions?.length).toEqual(4)
 
     //fake device id
@@ -142,7 +151,7 @@ describe('sessions e2e tests', () => {
       .delete(SETTINGS.PATHS.SECURITY + `/devices/${fakeId}`)
       .set('Cookie', `refreshToken=${device1tokens.refreshToken}`)
       .expect(HttpStatuses.NotFound)
-    sessions = await sessionsQueryRepository.getSessions(dev2payload?.userId);
+    sessions = await sessionsQueryRepo.getSessions(dev2payload?.userId);
     expect(sessions?.length).toEqual(4)
 
     //old revoked token
@@ -150,7 +159,7 @@ describe('sessions e2e tests', () => {
       .delete(SETTINGS.PATHS.SECURITY + `/devices/${dev2payload?.deviceId}`)
       .set('Cookie', `refreshToken=${oldDev1Tokens.refreshToken}`)
       .expect(HttpStatuses.Unauthorized)
-    sessions = await sessionsQueryRepository.getSessions(dev2payload?.userId);
+    sessions = await sessionsQueryRepo.getSessions(dev2payload?.userId);
     expect(sessions?.length).toEqual(4)
 
 
@@ -158,7 +167,7 @@ describe('sessions e2e tests', () => {
       .delete(SETTINGS.PATHS.SECURITY + `/devices/${dev2payload?.deviceId}`)
       .set('Cookie', `refreshToken=${device1tokens.refreshToken}`)
       .expect(HttpStatuses.NoContent)
-    sessions = await sessionsQueryRepository.getSessions(dev2payload?.userId);
+    sessions = await sessionsQueryRepo.getSessions(dev2payload?.userId);
     expect(sessions?.length).toEqual(3)
     expect(sessions!.map(session => session.deviceId)).not.toContain(dev2payload.deviceId)
   })

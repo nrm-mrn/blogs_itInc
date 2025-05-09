@@ -1,8 +1,10 @@
 import nodemailer from 'nodemailer';
 import { SETTINGS } from '../settings/settings';
+import { injectable } from 'inversify';
 
-export const nodemailerService = {
-  async sendEmail(
+@injectable()
+export class MailerService {
+  public async sendEmail(
     email: string,
     template: string
   ): Promise<boolean> {
@@ -17,9 +19,9 @@ export const nodemailerService = {
     });
 
     return !!res
-  },
+  }
 
-  emailTransporter() {
+  private emailTransporter() {
     if (!SETTINGS.EMAIL || !SETTINGS.EMAIL_PASS) {
       throw new Error('Mailer account credentials are not present in env. Service inactive')
     }
@@ -31,8 +33,8 @@ export const nodemailerService = {
         user: SETTINGS.EMAIL,
         pass: SETTINGS.EMAIL_PASS,
       },
-      logger: true,
-      debug: true,
+      // logger: true,
+      // debug: true,
       connectionTimeout: 10000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
@@ -43,9 +45,9 @@ export const nodemailerService = {
       rateLimit: 1,
     });
     return transporter;
-  },
+  }
 
-  verifyConnection() {
+  public verifyConnection() {
     const transporter = this.emailTransporter()
     transporter.verify(function (error, success) {
       if (error) {

@@ -1,7 +1,9 @@
+import { injectable } from "inversify";
 import { sessionsCollection } from "../db/mongoDb"
 import { IDeviceView } from "./session.types";
 
-export const sessionsQueryRepository = {
+@injectable()
+export class SessionsQueryRepository {
   async getSessions(userId: string): Promise<IDeviceView[] | null> {
     const sessions = await sessionsCollection.find({ userId }).toArray()
     if (!sessions.length) {

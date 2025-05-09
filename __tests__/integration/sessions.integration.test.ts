@@ -1,14 +1,23 @@
-import { authService } from "../../src/auth/auth.service";
-import { nodemailerService } from "../../src/auth/email.service";
+import { AuthService } from "../../src/auth/auth.service";
+import { MailerService } from "../../src/auth/email.service";
 import { client, createIndexes, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { createUser, testingDtosCreator } from "../test-helpers";
+import { createUsers, registerUser, testingDtosCreator, testSeeder } from "../test-helpers";
 import { LoginDto } from "../../src/auth/auth.types";
-import { jwtService } from "../../src/auth/jwt.service";
+import { JwtService } from "../../src/auth/jwt.service";
 import { ISessionDb } from "../../src/security/session.types";
-import { sessionsService } from "../../src/security/sessions.service";
+import { SessionsService } from "../../src/security/sessions.service";
+import { container } from "../../src/ioc";
 
 describe('sessions integration tests', () => {
+  let sessionsService: SessionsService;
+  let authService: AuthService;
+  let jwtService: JwtService;
+
+  const nodemailerService = {
+    sendEmail: jest.fn().mockResolvedValue(true),
+  } as unknown as MailerService;
+
   beforeAll(async () => {
     const res = await runDb(SETTINGS.MONGO_URL)
     if (!res) {
@@ -17,6 +26,17 @@ describe('sessions integration tests', () => {
     await sessionsCollection.drop()
     await usersCollection.drop()
     await createIndexes()
+    await container.unbind(MailerService)
+    container.bind(MailerService).toConstantValue(nodemailerService);
+    sessionsService = container.get(SessionsService);
+    authService = container.get(AuthService)
+    jwtService = container.get(JwtService)
+    // nodemailerService.sendEmail = jest
+    //   .fn()
+    //   .mockImplementation(
+    //     (email: string, template: string) =>
+    //       Promise.resolve(true)
+    //   );
   })
 
   afterAll(async () => {
@@ -29,19 +49,14 @@ describe('sessions integration tests', () => {
     await createIndexes()
   })
 
-  nodemailerService.sendEmail = jest
-    .fn()
-    .mockImplementation(
-      (email: string, template: string) =>
-        Promise.resolve(true)
-    );
 
   it('should create new sessions on every login', async () => {
-    const { login, pass, email } = testingDtosCreator.createUserDto({});
-    await createUser();
+    const { login, pass: password, email } = testingDtosCreator.createUserDto({});
+    await testSeeder.createUsers([{ login, password, email }]);
+
     const loginDto: LoginDto = {
       loginOrEmail: login,
-      password: pass,
+      password,
       ip: '1.1.1.1',
       title: 'chrome'
     }
@@ -66,11 +81,11 @@ describe('sessions integration tests', () => {
   })
 
   it('should delete a session when logging user out', async () => {
-    const { login, pass, email } = testingDtosCreator.createUserDto({});
-    await createUser();
+    const { login, pass: password, email } = testingDtosCreator.createUserDto({});
+    await testSeeder.createUsers([{ login, password, email }]);
     const loginDto: LoginDto = {
       loginOrEmail: login,
-      password: pass,
+      password,
       ip: '1.1.1.1',
       title: 'chrome'
     }

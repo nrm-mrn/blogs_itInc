@@ -1,105 +1,86 @@
-import { NextFunction, Response, Router } from "express";
-import { baseAuthGuard } from "../../auth/guards/baseAuthGuard";
-import { inputValidationResultMiddleware } from "../../shared/middlewares/validationResult.middleware";
+import { NextFunction, Response } from "express";
 import { ObjectId } from "mongodb";
-import { postsQueryRepository } from "../postsQuery.repository";
+import { PostsQueryRepository } from "../postsQuery.repository";
 import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
-import { postsService } from "../posts.service";
-import { idToObjectId, paginationQuerySanitizerChain } from "../../shared/middlewares/shared.sanitizers";
+import { PostsService } from "../posts.service";
 import { RequestWithBody, RequestWithParams, RequestWithParamsAndBody, RequestWithParamsAndQuery, RequestWithParamsBodyAndUserId, RequestWithQuery } from "../../shared/types/requests.types";
 import { IdType } from "../../shared/types/id.type";
-import { postInputValidator, postGetValidator, postUpdateValidator } from "./middleware/posts.validators";
-import { jwtGuard } from "../../auth/guards/jwtGuard";
-import { commentContentValidator } from "../../comments/api/middleware/comments.validators";
-import { CommentInputModel, CommentViewModel, CreateCommentDto, GetCommentsDto } from "../../comments/comments.types";
-import { commentsService } from "../../comments/comments.service";
+import { CommentInputModel, ICommentView, CreateCommentDto, GetCommentsDto } from "../../comments/comments.types";
+import { CommentsService } from "../../comments/comments.service";
 import { HttpStatuses } from "../../shared/types/httpStatuses";
-import { paramObjectIdValidator } from "../../shared/middlewares/shared.validators";
-import { GetPostCommentsSanitizedQuery, PostInputModel, PostViewModel } from "../posts.types";
-import { commentsQueryRepository } from "../../comments/commentsQuery.repository";
+import { GetPostCommentsSanitizedQuery, PostInputModel, IPostView } from "../posts.types";
+import { CommentsQueryRepository } from "../../comments/commentsQuery.repository";
+import { inject, injectable } from "inversify";
 
+@injectable()
+export class PostsController {
 
-export const postsRouter = Router({})
+  constructor(
+    @inject(PostsQueryRepository)
+    private readonly postsQueryRepo: PostsQueryRepository,
+    @inject(PostsService)
+    private readonly postsService: PostsService,
+    @inject(CommentsService)
+    private readonly commentsService: CommentsService,
+    @inject(CommentsQueryRepository)
+    private readonly commentsQueryRepo: CommentsQueryRepository
+  ) { }
 
-postsRouter.get('/',
-  paginationQuerySanitizerChain,
-  async (req: RequestWithQuery<PagingQuery>, res: Response<PagedResponse<PostViewModel>>, next: NextFunction) => {
+  async getAllPosts(req: RequestWithQuery<PagingQuery>, res: Response<PagedResponse<IPostView>>, next: NextFunction) {
     const paging = req.query as PagingFilter;
     try {
-      const postsView = await postsQueryRepository.getAllPosts({ pagination: paging })
+      const postsView = await this.postsQueryRepo.getAllPosts({ pagination: paging })
       res.status(200).send(postsView)
       return;
     } catch (err) {
       next(err)
     }
-  })
+  }
 
-postsRouter.post('/',
-  baseAuthGuard,
-  postInputValidator,
-  inputValidationResultMiddleware,
-  async (req: RequestWithBody<PostInputModel>, res: Response<PostViewModel>, next: NextFunction) => {
-    const { post, error } = await postsService.createPost(req.body);
-    if (!post) {
-      res.sendStatus(400)
+  async createPost(req: RequestWithBody<PostInputModel>, res: Response<IPostView>, next: NextFunction) {
+    try {
+      const postId = await this.postsService.createPost(req.body);
+      const postView = await this.postsQueryRepo.findPostById(postId);
+      res.status(201).send(postView)
+      return
+    } catch (err) {
+      next(err);
       return
     }
-    res.status(201).send(post)
-    return;
-  })
+  }
 
-postsRouter.get('/:id',
-  postGetValidator,
-  inputValidationResultMiddleware,
-  idToObjectId,
-  async (req: RequestWithParams<IdType>, res: Response<PostViewModel>) => {
-    const id = req.params.id as unknown as ObjectId
-    const post = await postsQueryRepository.findPostById(id);
-    if (!post) {
-      res.sendStatus(404);
-      return;
+  async getPost(req: RequestWithParams<IdType>, res: Response<IPostView>, next: NextFunction) {
+    try {
+      const id = req.params.id as unknown as ObjectId
+      const post = await this.postsQueryRepo.findPostById(id);
+      res.status(200).send(post)
+    } catch (err) {
+      next(err)
     }
-    res.status(200).send(post)
-    return;
-  })
+  }
 
-postsRouter.put('/:id',
-  baseAuthGuard,
-  postUpdateValidator,
-  inputValidationResultMiddleware,
-  idToObjectId,
-  async (req: RequestWithParamsAndBody<IdType, PostInputModel>, res: Response) => {
-    const id = req.params.id as unknown as ObjectId;
-    const { error } = await postsService.editPost(id, req.body)
-    if (error) {
-      res.sendStatus(404);
-      return;
+  async editPost(req: RequestWithParamsAndBody<IdType, PostInputModel>, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as unknown as ObjectId;
+      await this.postsService.editPost(id, req.body)
+      res.sendStatus(204)
+    } catch (err) {
+      next(err)
     }
-    res.sendStatus(204)
-    return
-  })
+  }
 
-postsRouter.delete('/:id',
-  baseAuthGuard,
-  idToObjectId,
-  async (req: RequestWithParams<IdType>, res: Response) => {
-    const id = req.params.id as unknown as ObjectId;
-    const { error } = await postsService.deletePost(id)
-    if (error) {
-      res.sendStatus(404);
-      return;
+  async deletePost(req: RequestWithParams<IdType>, res: Response, next: NextFunction) {
+    try {
+
+      const id = req.params.id as unknown as ObjectId;
+      await this.postsService.deletePost(id)
+      res.sendStatus(204)
+    } catch (err) {
+      next(err)
     }
-    res.sendStatus(204)
-    return
-  })
+  }
 
-postsRouter.post('/:id/comments',
-  jwtGuard,
-  paramObjectIdValidator,
-  commentContentValidator,
-  inputValidationResultMiddleware,
-  idToObjectId,
-  async (req: RequestWithParamsBodyAndUserId<{ id: string }, CommentInputModel, { id: string }>, res: Response<CommentViewModel>, next: NextFunction) => {
+  async createCommentForPost(req: RequestWithParamsBodyAndUserId<{ id: string }, CommentInputModel, { id: string }>, res: Response<ICommentView>, next: NextFunction) {
     const postId = req.params.id as unknown as ObjectId;
     const userId = req.user!.id;
     const input: CreateCommentDto = {
@@ -108,20 +89,15 @@ postsRouter.post('/:id/comments',
       content: req.body.content,
     }
     try {
-      const { data } = await commentsService.createComment(input);
+      const { data } = await this.commentsService.createComment(input);
       res.status(HttpStatuses.Created).send(data);
       return
     } catch (err) {
       next(err)
     }
-  })
+  }
 
-postsRouter.get('/:id/comments',
-  paramObjectIdValidator,
-  inputValidationResultMiddleware,
-  paginationQuerySanitizerChain,
-  idToObjectId,
-  async (req: RequestWithParamsAndQuery<{ id: string }, PagingQuery>, res: Response<PagedResponse<CommentViewModel>>, next: NextFunction) => {
+  async getCommentsForPost(req: RequestWithParamsAndQuery<{ id: string }, PagingQuery>, res: Response<PagedResponse<ICommentView>>, next: NextFunction) {
     const postId = req.params.id as unknown as ObjectId;
     const { ...pagination } = req.query as GetPostCommentsSanitizedQuery
     const dto: GetCommentsDto = {
@@ -129,11 +105,13 @@ postsRouter.get('/:id/comments',
       paginator: pagination,
     }
     try {
-      const data = await commentsQueryRepository.getComments(dto);
+      const data = await this.commentsQueryRepo.getComments(dto);
       res.status(HttpStatuses.Success).send(data);
       return
     } catch (err) {
       next(err)
     }
   }
-)
+
+}
+

@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
+import { Blog } from "./blog.entity";
 
 export type GetBlogsDto = {
   searchNameTerm: string | null;
@@ -19,7 +20,7 @@ export type GetBlogsSanitizedQuery = {
   searchNameTerm: string | null;
 } & PagingFilter;
 
-export type BlogViewModel = {
+export interface IBlogView {
   id: ObjectId;
   name: string;
   description: string;
@@ -28,14 +29,7 @@ export type BlogViewModel = {
   isMembership: boolean;
 }
 
-export type BlogDbModel = {
-  _id: ObjectId;
-  name: string;
-  description: string;
-  websiteUrl: string;
-  createdAt: string;
-  isMembership: boolean;
-}
+export interface IBlogDb extends Blog { };
 
 export type BlogInputModel = {
   name: string;
