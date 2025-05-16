@@ -1,14 +1,15 @@
 import { ObjectId } from "mongodb";
 import { AuthService } from "../../src/auth/auth.service";
 import { MailerService } from "../../src/auth/email.service";
-import { client, runDb, usersCollection } from "../../src/db/mongoDb";
+import { runDb, } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { insertUser, testingDtosCreator, testSeeder } from "../test-helpers";
-import { User } from "../../src/users/user.entity";
+import { User, UserModel } from "../../src/users/user.entity";
 import { DateTime } from "luxon";
 import { randomUUID } from "crypto";
 import { UsersRepository } from "../../src/users/users.repository";
 import { container } from "../../src/ioc";
+import mongoose from "mongoose";
 
 describe('auth integration tests', () => {
   let usersRepository: UsersRepository;
@@ -19,11 +20,11 @@ describe('auth integration tests', () => {
   } as unknown as MailerService;
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await usersCollection.drop()
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
     await container.unbind(MailerService)
     container.bind(MailerService).toConstantValue(nodemailerService);
     usersRepository = container.get(UsersRepository)
@@ -31,12 +32,12 @@ describe('auth integration tests', () => {
   })
 
   beforeEach(async () => {
-    await usersCollection.drop()
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
     jest.clearAllMocks()
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
   describe('User registration', () => {
@@ -57,7 +58,7 @@ describe('auth integration tests', () => {
 
       await expect(authService.registerUser({ login, email, password })).rejects.toThrow(/already exists/i)
 
-      expect(await usersCollection.countDocuments()).toBe(1)
+      expect(await UserModel.countDocuments().exec()).toBe(1)
 
     });
   })
@@ -85,13 +86,13 @@ describe('auth integration tests', () => {
       const code = randomUUID()
       const { login, pass, email } = testingDtosCreator.createUserDto({});
       const user = new User(login, email, '22qfwfdsafsaf')
-      user.emailConfirmation.expirationDate = DateTime.now();
+      user.emailConfirmation.expirationDate = DateTime.now().toJSDate()
       user.emailConfirmation.confirmationCode = code;
       await insertUser(user);
 
       await expect(authService.confirmEmail(code)).rejects.toThrow(/expired/i)
 
-      const dbUser = await usersRepository.getUserByEmailConfirmation(code);
+      const dbUser = await usersRepository.findUserByEmailConfirmation(code);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(false)
     });
@@ -104,7 +105,7 @@ describe('auth integration tests', () => {
 
       await authService.confirmEmail(user.emailConfirmation.confirmationCode)
 
-      const dbUser = await usersRepository.getUserByEmailConfirmation(user.emailConfirmation.confirmationCode);
+      const dbUser = await usersRepository.findUserByEmailConfirmation(user.emailConfirmation.confirmationCode);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(true)
     });
@@ -125,7 +126,7 @@ describe('auth integration tests', () => {
       expect(nodemailerService.sendEmail).toHaveBeenCalled()
       expect(nodemailerService.sendEmail).toHaveBeenCalledTimes(1)
 
-      const dbUser = await usersRepository.getUserByEmailConfirmation(mockUuid);
+      const dbUser = await usersRepository.findUserByEmailConfirmation(mockUuid);
       expect(dbUser).toBeTruthy()
       expect(dbUser!.emailConfirmation.isConfirmed).toBe(false)
     });

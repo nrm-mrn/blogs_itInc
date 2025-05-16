@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { PagingFilter, PagingQuery } from "../shared/types/pagination.types";
 import { Blog } from "./blog.entity";
 
@@ -21,7 +21,7 @@ export type GetBlogsSanitizedQuery = {
 } & PagingFilter;
 
 export interface IBlogView {
-  id: ObjectId;
+  id: string;
   name: string;
   description: string;
   websiteUrl: string;

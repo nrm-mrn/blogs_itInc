@@ -1,4 +1,4 @@
-import { blogsCollection, client, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { PagedResponse, PagingQuery, SortDirection } from "../../src/shared/types/pagination.types";
 import { GetUsersQuery, UserInputModel } from "../../src/users/user.types";
@@ -7,6 +7,9 @@ import { IBlogView } from "../../src/blogs/blogs.types";
 import { IUserView } from "../../src/users/user.types";
 import { createApp } from "../../src/app";
 import { agent } from "supertest";
+import { BlogModel } from "../../src/blogs/blog.entity";
+import mongoose from "mongoose";
+import { UserModel } from "../../src/users/user.entity";
 
 describe('users e2e tests', () => {
   let buff;
@@ -15,13 +18,11 @@ describe('users e2e tests', () => {
   let app: any;
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await blogsCollection.drop()
-    await postsCollection.drop()
-    await usersCollection.drop()
+    await BlogModel.db.dropDatabase()
     buff = Buffer.from(SETTINGS.SUPERUSER!);
     codedAuth = buff.toString('base64')
     app = createApp()
@@ -30,7 +31,7 @@ describe('users e2e tests', () => {
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
 
@@ -147,7 +148,7 @@ describe('users e2e tests', () => {
     })
 
     it('Test search params', async () => {
-      await usersCollection.drop();
+      await UserModel.db.dropCollection(SETTINGS.PATHS.USERS);
       const userPattern: UserInputModel =
       {
         login: 'testPatt',

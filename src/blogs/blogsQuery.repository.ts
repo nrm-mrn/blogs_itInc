@@ -1,11 +1,12 @@
-import { ObjectId } from "mongodb";
-import { blogsCollection, postsCollection } from "../db/mongoDb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { GetBlogsDto, GetBlogPostsDto, IBlogView } from "./blogs.types";
 import { PagedResponse } from "../shared/types/pagination.types";
 import { IPostView } from "../posts/posts.types";
 import { injectable } from "inversify";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
+import { BlogModel } from "./blog.entity";
+import { PostModel } from "../posts/post.entity";
 
 @injectable()
 export class BlogQueryRepository {
@@ -25,16 +26,22 @@ export class BlogQueryRepository {
   async getAllBlogs(dto: GetBlogsDto): Promise<PagedResponse<IBlogView>> {
     const filter = this.getFilter(dto)
     const paging = dto.pagination
-    const blogs = await blogsCollection
+    const blogs = await BlogModel
       .find(filter)
-      .sort(paging.sortBy, paging.sortDirection)
+      .sort({ [paging.sortBy]: paging.sortDirection })
       .skip((paging.pageNumber - 1) * paging.pageSize)
       .limit(paging.pageSize)
-      .toArray()
-    const total = await blogsCollection.countDocuments(filter)
+      .exec()
+    const total = await BlogModel.countDocuments(filter).exec()
     const blogViews: IBlogView[] = blogs.map(blog => {
-      const { _id, ...rest } = blog;
-      return { id: _id, ...rest }
+      return {
+        id: blog._id.toString(),
+        name: blog.name,
+        description: blog.description,
+        websiteUrl: blog.websiteUrl,
+        createdAt: blog.createdAt.toISOString(),
+        isMembership: blog.isMembership
+      }
     })
 
     return {
@@ -47,21 +54,16 @@ export class BlogQueryRepository {
   }
 
   async getBlogPosts(dto: GetBlogPostsDto): Promise<PagedResponse<IPostView>> {
-    const blog = await this.findBlog(dto.blogId);
-    if (!blog) {
-      throw new CustomError('Blog does not exist', HttpStatuses.NotFound)
-    }
     const filter = this.getFilter(dto);
     const paging = dto.pagination
-    const posts = await postsCollection
+    const posts = await PostModel
       .find(filter)
-      .sort(paging.sortBy, paging.sortDirection)
+      .sort({ [paging.sortBy]: paging.sortDirection })
       .skip((paging.pageNumber - 1) * paging.pageSize)
       .limit(paging.pageSize)
-      .toArray()
-    const total = await postsCollection.countDocuments(filter);
+      .exec()
+    const total = await PostModel.countDocuments(filter);
     const postViews: IPostView[] = posts.map(post => {
-      const { _id, ...rest } = post
       return {
         id: post._id.toString(),
         title: post.title,
@@ -69,7 +71,7 @@ export class BlogQueryRepository {
         content: post.content,
         blogId: post.blogId.toString(),
         blogName: post.blogName,
-        createdAt: post.createdAt
+        createdAt: post.createdAt.toISOString()
       }
     })
     return {
@@ -82,16 +84,16 @@ export class BlogQueryRepository {
   }
 
   async findBlog(id: ObjectId): Promise<IBlogView> {
-    const blog = await blogsCollection.findOne({ _id: id })
+    const blog = await BlogModel.findOne({ _id: id })
     if (!blog) {
       throw new CustomError('Blog does not exist', HttpStatuses.NotFound)
     }
     return {
-      id: blog._id,
+      id: blog._id.toString(),
       description: blog.description,
       name: blog.name,
       websiteUrl: blog.websiteUrl,
-      createdAt: blog.createdAt,
+      createdAt: blog.createdAt.toISOString(),
       isMembership: blog.isMembership
     }
   }

@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { ApiRequest } from "./apiRequest.entity";
+import { ApiReqModel, ApiRequest } from "./apiRequest.entity";
 import { ApiRequestsRepository } from "./apiRequest.repository";
 import { CreateRequestDto } from "./apiRequest.types";
 import { inject, injectable } from "inversify";
@@ -15,7 +15,10 @@ export class ApiRequestService {
       req.ip,
       req.URL,
     )
-    return await this.apiRequestRepository.saveRequest(reqInput);
+    const newReq = new ApiReqModel({
+      ...reqInput
+    })
+    return this.apiRequestRepository.save(newReq);
   }
 
   async getDocsCountForPeriod(ip: string, url: string, seconds: number): Promise<number> {

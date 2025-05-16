@@ -1,9 +1,9 @@
-import { ObjectId, WithId } from "mongodb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { BlogRepository } from "./blogs.repository";
 import { PostsService } from "../posts/posts.service";
 import { BlogPostInputModel } from "../posts/posts.types";
-import { BlogInputModel, IBlogDb } from "./blogs.types";
-import { Blog } from "./blog.entity";
+import { BlogInputModel } from "./blogs.types";
+import { BlogModel } from "./blog.entity";
 import { inject, injectable } from "inversify";
 
 @injectable()
@@ -16,19 +16,14 @@ export class BlogService {
   ) { };
 
   async createBlog(input: BlogInputModel): Promise<{ blogId: ObjectId }> {
-    const newBlog = new Blog(
-      input.name,
-      input.description,
-      input.websiteUrl,
-      false
-    )
-    const blogId = await this.blogRepository.createBlog(newBlog)
+    const newBlog = new BlogModel({
+      ...input,
+      isMembership: false
+    })
+
+    const blogId = await this.blogRepository.save(newBlog)
 
     return { blogId }
-  }
-
-  async findBlogById(id: ObjectId): Promise<WithId<IBlogDb> | null> {
-    return this.blogRepository.findBlogById(id)
   }
 
   async createPostForBlog(blogId: ObjectId, postInput: BlogPostInputModel): Promise<ObjectId> {
@@ -36,10 +31,24 @@ export class BlogService {
   }
 
   async editBlog(id: ObjectId, input: BlogInputModel): Promise<void> {
-    return await this.blogRepository.editBlog(id, input)
+    const blog = await this.blogRepository.getBlogById(id);
+    if (blog.name !== input.name) {
+      await this.postsService.editPostsByBlogId(id, { blogName: input.name })
+    }
+    blog.name = input.name;
+    blog.description = input.description;
+    blog.websiteUrl = input.websiteUrl;
+    await this.blogRepository.save(blog)
+    return
   }
 
   async deleteBlog(id: ObjectId): Promise<void> {
-    return this.blogRepository.deleteBlog(id)
+    const blog = await this.blogRepository.getBlogById(id)
+    const res = await this.blogRepository.deleteBlog(blog)
+    if (res) {
+      await this.postsService.deletePostsByBlogId(id)
+      return
+    }
+    throw new Error('Failed to delete a blog')
   }
 }

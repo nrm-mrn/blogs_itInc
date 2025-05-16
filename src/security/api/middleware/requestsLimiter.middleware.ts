@@ -4,7 +4,6 @@ import { ApiRequestService } from "../../apiRequest.service";
 import { CreateRequestDto } from "../../apiRequest.types";
 import { container } from "../../../ioc";
 
-//TODO: how do I avoid service locator pattern in middleware?
 const apiRequestService = container.get(ApiRequestService)
 
 export const requestsLimiter = async (req: Request, res: Response, next: NextFunction) => {

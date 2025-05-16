@@ -1,42 +1,31 @@
-import { ObjectId } from "mongodb";
-import { UpdateCommentDto } from "./comments.types";
-import { commentsCollection } from "../db/mongoDb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { injectable } from "inversify";
-import { Comment } from "./comment.entity";
+import { CommentDocument, CommentModel } from "./comment.entity";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 
 @injectable()
 export class CommentsRepository {
 
-  async createComment(newComment: Comment): Promise<{ commentId: ObjectId }> {
-    const insertRes = await commentsCollection.insertOne(newComment);
-    if (insertRes.acknowledged) {
-      return { commentId: insertRes.insertedId }
-    }
-    throw new Error('Failed to create a comment')
+  async save(newComment: CommentDocument): Promise<ObjectId> {
+    const comment = await newComment.save();
+    return comment._id
   }
 
-  async editComment(dto: UpdateCommentDto): Promise<void> {
-    const res = await commentsCollection.updateOne({ _id: dto.id }, {
-      $set: { content: dto.content }
-    })
-    if (res.modifiedCount !== 1) {
-      throw new CustomError('Comment was not found', HttpStatuses.NotFound)
-    }
-    return
+  async getCommentById(id: ObjectId): Promise<CommentDocument> {
+    const comment = await CommentModel.findById(id).orFail(
+      new CustomError('Comment was not found', HttpStatuses.NotFound)
+    )
+    return comment
   }
 
-  async deleteComment(id: ObjectId): Promise<void> {
-    const res = await commentsCollection.deleteOne({ _id: id })
-    if (res.deletedCount !== 1) {
-      throw new CustomError('Comment was not found', HttpStatuses.NotFound)
-    }
-    return;
+  async deleteComment(comment: CommentDocument): Promise<boolean> {
+    const res = await comment.deleteOne()
+    return res.acknowledged
   }
 
   async deleteCommentsByPost(postId: ObjectId): Promise<void> {
-    const res = await commentsCollection.deleteMany({ postId });
+    const res = await CommentModel.deleteMany({ postId });
     if (res.acknowledged) {
       return
     }

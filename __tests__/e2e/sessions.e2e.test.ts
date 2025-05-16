@@ -1,20 +1,21 @@
-jest.mock("../../src/security/api/middleware/requestsLimiter.middleware", () =>
-({
-  requestsLimiter: (req: any, res: any, next: NextFunction) => next(),
-}))
-import { client, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { registerUser, testingDtosCreator, UserDto } from "../test-helpers";
 import { createApp } from "../../src/app";
 import request, { agent } from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
 import { AuthSuccess, LoginBody } from "../../src/auth/auth.types";
-import { IDeviceView, ISessionDb } from "../../src/security/session.types";
+import { IDeviceView } from "../../src/security/session.types";
 import { JwtService } from "../../src/auth/jwt.service";
 import { ObjectId } from "mongodb";
 import { SessionsQueryRepository } from "../../src/security/sessions.queryRepository";
-import { NextFunction } from "express";
 import { container } from "../../src/ioc";
+import { UserModel } from "../../src/users/user.entity";
+import { ApiReqModel } from "../../src/security/apiRequest.entity";
+import mongoose from "mongoose";
+import { ApiRequestService } from "../../src/security/apiRequest.service";
+import { MailerService } from "../../src/auth/email.service";
+import { DeviceSessionModel, SessionDocument } from "../../src/security/session.entity";
 
 describe('sessions e2e tests', () => {
   let sessionsQueryRepo: SessionsQueryRepository;
@@ -23,20 +24,22 @@ describe('sessions e2e tests', () => {
   let req: any
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await usersCollection.drop()
-    await sessionsCollection.drop()
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
+    await ApiReqModel.db.dropCollection(SETTINGS.PATHS.REQUESTS)
     sessionsQueryRepo = container.get(SessionsQueryRepository);
     jwtService = container.get(JwtService)
     app = createApp();
     req = agent(app);
+    jest.spyOn(ApiRequestService.prototype, 'getDocsCountForPeriod').mockImplementation(() => Promise.resolve(1))
+    jest.spyOn(MailerService.prototype, 'sendEmail').mockImplementation(() => Promise.resolve(true))
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
   let device1tokens: AuthSuccess
@@ -186,7 +189,7 @@ describe('sessions e2e tests', () => {
       .set('Cookie', `refreshToken=${device3tokens.refreshToken}`)
       .expect(HttpStatuses.NoContent)
 
-    const sessions = await sessionsCollection.find({}).toArray() as ISessionDb[];
+    const sessions = await DeviceSessionModel.find({}).lean() as SessionDocument[];
     expect(sessions?.length).toEqual(2)
     expect(sessions!.map(session => session._id)).not.toContain(dev3payload.deviceId)
   })
@@ -205,7 +208,7 @@ describe('sessions e2e tests', () => {
       .set('Cookie', `refreshToken=${device1tokens.refreshToken}`)
       .expect(HttpStatuses.NoContent)
 
-    const sessions = await sessionsCollection.find({}).toArray() as ISessionDb[];
+    const sessions = await DeviceSessionModel.find({}).lean() as SessionDocument[];
     expect(sessions?.length).toEqual(1)
     expect(sessions[0]._id.toString()).toEqual(dev1payload.deviceId)
   })

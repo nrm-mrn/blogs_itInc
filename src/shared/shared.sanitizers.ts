@@ -1,6 +1,6 @@
 import { param, query } from "express-validator";
-import { ObjectId } from "mongodb";
 import { SortDirection } from "./types/pagination.types";
+import mongoose from "mongoose";
 
 const sortBy = query('sortBy')
   .customSanitizer((sortBy: string | undefined) => {
@@ -26,7 +26,7 @@ const pageNumber = query('pageNumber')
   })
 
 export const idToObjectId = param('id')
-  .customSanitizer(id => new ObjectId(id))
+  .customSanitizer(id => new mongoose.Types.ObjectId(id))
 
 export const querySanitizerChain = [
   sortBy,

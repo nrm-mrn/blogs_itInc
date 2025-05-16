@@ -1,15 +1,14 @@
-import { Filter, ObjectId } from "mongodb";
-import { usersCollection } from "../db/mongoDb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { PagedResponse } from "../shared/types/pagination.types";
 import { GetUsersDto, IUserView } from "./user.types";
-import { User } from "./user.entity";
+import { UserModel } from "./user.entity";
 import { MeView } from "../auth/auth.types";
 import { injectable } from "inversify";
 
 @injectable()
 export class UsersQueryRepository {
 
-  getFilter(dto: GetUsersDto): Filter<User> {
+  getFilter(dto: GetUsersDto) {
     let searchLogin;
     let searchEmail;
     if ("searchLoginTerm" in dto && dto.searchLoginTerm !== null) {
@@ -33,15 +32,20 @@ export class UsersQueryRepository {
   async getAllUsers(dto: GetUsersDto): Promise<PagedResponse<IUserView>> {
     const filter = this.getFilter(dto)
     const paging = dto.pagination
-    const users = await usersCollection
+    const users = await UserModel
       .find(filter)
-      .sort(paging.sortBy, paging.sortDirection)
+      .sort({ [paging.sortBy]: paging.sortDirection })
       .skip((paging.pageNumber - 1) * paging.pageSize)
       .limit(paging.pageSize)
-      .toArray()
-    const total = await usersCollection.countDocuments(filter);
+      .exec()
+    const total = await UserModel.countDocuments(filter).exec()
     const usersView = users.map(user => {
-      return { id: user._id.toString(), login: user.login, email: user.email, createdAt: user.createdAt }
+      return {
+        id: user._id.toString(),
+        login: user.login,
+        email: user.email,
+        createdAt: user.createdAt.toISOString()
+      }
     })
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
@@ -54,7 +58,7 @@ export class UsersQueryRepository {
 
   async getUserById(id: ObjectId): Promise<IUserView | null> {
     //for users router post method
-    const user = await usersCollection.findOne({ _id: id })
+    const user = await UserModel.findById(id)
     if (!user) {
       return null
     }
@@ -62,12 +66,12 @@ export class UsersQueryRepository {
       id: user._id.toString(),
       login: user.login,
       email: user.email,
-      createdAt: user.createdAt
+      createdAt: user.createdAt.toISOString()
     }
   }
 
   async getUserInfo(id: ObjectId): Promise<MeView | null> {
-    const user = await usersCollection.findOne({ _id: id })
+    const user = await UserModel.findById(id)
     if (!user) {
       return null
     }

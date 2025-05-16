@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import { JwtService } from "../jwt.service";
 import { container } from "../../ioc";
 
-//TODO: get rid of service locator
 const jwtService = container.get(JwtService)
 
 export const refreshTokenGuard = (req: Request, res: Response, next: NextFunction) => {

@@ -1,62 +1,66 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { CommentsRepository } from "./comments.repository";
-import { ICommentView, CreateCommentDto, DeleteCommentDto, UpdateCommentDto } from "./comments.types";
-import { CommentsQueryRepository } from "./commentsQuery.repository";
+import { CreateCommentDto, DeleteCommentDto, UpdateCommentDto } from "./comments.types";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
-import { PostsQueryRepository } from "../posts/postsQuery.repository";
 import { UserService } from "../users/users.service";
 import { inject, injectable } from "inversify";
-import { Comment, CommentatorInfo } from "./comment.entity";
+import { CommentatorInfo, CommentModel } from "./comment.entity";
+import mongoose from "mongoose";
+import { PostsRepository } from "../posts/posts.repository";
 
 @injectable()
 export class CommentsService {
   constructor(
     @inject(CommentsRepository)
     private readonly commentsRepository: CommentsRepository,
-    @inject(PostsQueryRepository)
-    private readonly postsQueryRepo: PostsQueryRepository,
-    @inject(CommentsQueryRepository)
-    private readonly commentsQueryRepo: CommentsQueryRepository,
+    @inject(PostsRepository)
+    private readonly postsRepository: PostsRepository,
     @inject(UserService)
     private readonly userService: UserService
   ) { };
 
-  //TODO: change to return created id
-  async createComment(dto: CreateCommentDto): Promise<{ data: ICommentView }> {
-    const targetPost = await this.postsQueryRepo.findPostById(dto.postId);
-    if (!targetPost) {
-      throw new CustomError('Post with provided id does not exist', HttpStatuses.NotFound)
-    }
-    const userId = new ObjectId(dto.userId)
-    const user = await this.userService.getUserById(userId)
+  async createComment(dto: CreateCommentDto): Promise<ObjectId> {
+    await this.postsRepository.getPost(dto.postId);
+    const userId = new mongoose.Types.ObjectId(dto.userId)
+    const user = await this.userService.findUserById(userId)
     if (!user) {
       throw new Error('Failed to create a comment: user not found')
     }
     const commentatorInfo: CommentatorInfo = { userId: dto.userId, userLogin: user.login }
-    const input = new Comment(
-      dto.postId,
-      dto.content,
-      commentatorInfo,
+    const newComment = new CommentModel({
+      postId: dto.postId,
+      content: dto.content,
+      commentatorInfo
+    }
     )
-    const { commentId } = await this.commentsRepository.createComment(input);
-    const data = await this.commentsQueryRepo.getCommentById(commentId)
-    return { data }
+    const commentId = await this.commentsRepository.save(newComment);
+    return commentId
   }
 
   async updateComment(dto: UpdateCommentDto): Promise<void> {
-    const data = await this.commentsQueryRepo.getCommentById(dto.id);
-    if (data.commentatorInfo.userId !== dto.userId) {
+    const comment = await this.commentsRepository.getCommentById(dto.id);
+    if (comment.commentatorInfo.userId !== dto.userId) {
       throw new CustomError('Only comment creator can edit it', HttpStatuses.Forbidden)
     }
-    return this.commentsRepository.editComment(dto);
+    comment.content = dto.content
+    this.commentsRepository.save(comment);
+    return
   }
 
   async deleteComment(dto: DeleteCommentDto): Promise<void> {
-    const data = await this.commentsQueryRepo.getCommentById(dto.id);
-    if (data.commentatorInfo.userId !== dto.userId) {
+    const comment = await this.commentsRepository.getCommentById(dto.id);
+    if (comment.commentatorInfo.userId !== dto.userId) {
       throw new CustomError('Only comment creator can delete it', HttpStatuses.Forbidden)
     }
-    return this.commentsRepository.deleteComment(dto.id);
+    const res = await this.commentsRepository.deleteComment(comment);
+    if (res) {
+      return
+    }
+    throw new Error('Failed to delete a comment')
+  }
+
+  async deleteCommentsByPost(postId: ObjectId): Promise<void> {
+    return this.commentsRepository.deleteCommentsByPost(postId);
   }
 }

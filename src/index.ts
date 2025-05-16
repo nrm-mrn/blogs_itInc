@@ -3,7 +3,7 @@ import { runDb } from "./db/mongoDb";
 import { SETTINGS } from "./settings/settings";
 
 const startApp = async () => {
-  const res = await runDb(SETTINGS.MONGO_URL);
+  const res = await runDb();
   if (!res) process.exit(1);
 
   const app = createApp();

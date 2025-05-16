@@ -1,22 +1,17 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { ICommentView, GetCommentsDto } from "./comments.types";
-import { commentsCollection } from "../db/mongoDb";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { PostsQueryRepository } from "../posts/postsQuery.repository";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
+import { CommentModel } from "./comment.entity";
+import { PostModel } from "../posts/post.entity";
 
 @injectable()
 export class CommentsQueryRepository {
 
-  constructor(
-    @inject(PostsQueryRepository)
-    private readonly postsQueryRepo: PostsQueryRepository
-  ) { }
-
   async getCommentById(id: ObjectId): Promise<ICommentView> {
-    const comment = await commentsCollection.findOne({ _id: id });
+    const comment = await CommentModel.findOne({ _id: id });
     if (!comment) {
       throw new CustomError('Comment id not found', HttpStatuses.NotFound)
     }
@@ -24,30 +19,29 @@ export class CommentsQueryRepository {
       id: comment._id.toString(),
       content: comment.content,
       commentatorInfo: comment.commentatorInfo,
-      createdAt: comment.createdAt
+      createdAt: comment.createdAt.toISOString()
     }
   }
 
   async getComments(dto: GetCommentsDto): Promise<PagedResponse<ICommentView>> {
-    const post = await this.postsQueryRepo.findPostById(dto.postId)
-    if (!post) {
-      throw new CustomError('Post with provided id does not exist', HttpStatuses.NotFound)
-    }
+    await PostModel.findById(dto.postId).orFail(
+      new CustomError('Post with provided id does not exist', HttpStatuses.NotFound)
+    )
     const filter = { postId: dto.postId }
     const paging = dto.paginator;
-    const comments = await commentsCollection
+    const comments = await CommentModel
       .find(filter)
-      .sort(paging.sortBy, paging.sortDirection)
+      .sort({ [paging.sortBy]: paging.sortDirection })
       .skip((paging.pageNumber - 1) * paging.pageSize)
       .limit(paging.pageSize)
-      .toArray()
-    const total = await commentsCollection.countDocuments(filter)
-    const commentsView = comments.map(comment => {
+      .exec();
+    const total = await CommentModel.countDocuments(filter).exec();
+    const commentsView: ICommentView[] = comments.map(comment => {
       return {
         id: comment._id.toString(),
         content: comment.content,
         commentatorInfo: comment.commentatorInfo,
-        createdAt: comment.createdAt,
+        createdAt: comment.createdAt.toISOString(),
       }
     })
     return {

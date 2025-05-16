@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../../shared/types/objectId.type";
 import { BlogService } from "../blogs.service";
 import { BlogQueryRepository } from "../blogsQuery.repository";
 import { GetBlogsQuery, GetBlogsDto, GetBlogsSanitizedQuery, BlogInputModel, IBlogView, GetBlogPostsDto } from "../blogs.types";

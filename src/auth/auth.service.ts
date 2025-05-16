@@ -1,5 +1,5 @@
 import { AuthSuccess, CreateRefreshTokenDto, LoginDto, RTokenPayload } from "./auth.types";
-import { ObjectId, WithId } from "mongodb";
+import { ObjectId } from "../shared/types/objectId.type";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { JwtService } from "./jwt.service";
@@ -12,6 +12,8 @@ import { CreateSessionDto } from "../security/session.types";
 import { UserService } from "../users/users.service";
 import { UUID } from "crypto";
 import { inject, injectable } from "inversify";
+import { UserDocument } from "../users/user.entity";
+import mongoose from "mongoose";
 
 @injectable()
 export class AuthService {
@@ -30,7 +32,7 @@ export class AuthService {
   ) { };
 
   async checkCredentials(credentials: LoginDto): Promise<AuthSuccess> {
-    let user: WithId<IUserDb>;
+    let user: UserDocument
     let isValidPass: boolean;
     try {
       user = await this.userService.getUserByLoginOrEmail(credentials.loginOrEmail);
@@ -47,7 +49,7 @@ export class AuthService {
     }
     const rtInput: CreateRefreshTokenDto = {
       userId: user._id.toString(),
-      deviceId: new ObjectId().toString(),
+      deviceId: new mongoose.Types.ObjectId().toString(),
     }
     const accessToken = this.jwtService.createAccessToken(user._id.toString())
     const { token: rToken, iat } = this.jwtService.createRefreshToken(rtInput)
@@ -67,7 +69,7 @@ export class AuthService {
   async registerUser(newUserDto: UserInputModel): Promise<ObjectId> {
     const { userId } = await this.userService.createUser(newUserDto);
 
-    const user = await this.userService.getUserById(userId);
+    const user = await this.userService.findUserById(userId);
 
     if (!user) {
       throw new Error('Failed to create a new user entry')
@@ -105,18 +107,14 @@ export class AuthService {
     //NOTE: should always work since guard check passed
     const payload = this.jwtService.verifyRefreshToken(token) as unknown as RTokenPayload
 
-    const session = await this.sessionsService.getSession(payload.deviceId, payload.iat);
-    if (!session) {
-      throw new CustomError('Session does not exist or already expired', HttpStatuses.Unauthorized)
-    }
-
+    await this.sessionsService.getSession(payload.deviceId, payload.iat);
     const { token: newRToken, iat } = this.jwtService.createRefreshToken(
       {
         deviceId: payload.deviceId,
         userId: payload.userId,
       });
     const accessToken = this.jwtService.createAccessToken(payload.userId)
-    await this, this.sessionsService.refreshSession(
+    await this.sessionsService.refreshSession(
       payload.deviceId,
       iat
     )

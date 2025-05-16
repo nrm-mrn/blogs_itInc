@@ -1,13 +1,16 @@
 import { AuthService } from "../../src/auth/auth.service";
 import { MailerService } from "../../src/auth/email.service";
-import { client, createIndexes, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
-import { SETTINGS } from "../../src/settings/settings";
-import { createUsers, registerUser, testingDtosCreator, testSeeder } from "../test-helpers";
+import { createIndexes, runDb } from "../../src/db/mongoDb";
+import { testingDtosCreator, testSeeder } from "../test-helpers";
 import { LoginDto } from "../../src/auth/auth.types";
 import { JwtService } from "../../src/auth/jwt.service";
 import { ISessionDb } from "../../src/security/session.types";
 import { SessionsService } from "../../src/security/sessions.service";
 import { container } from "../../src/ioc";
+import { DeviceSessionModel } from "../../src/security/session.entity";
+import { SETTINGS } from "../../src/settings/settings";
+import { UserModel } from "../../src/users/user.entity";
+import mongoose from "mongoose";
 
 describe('sessions integration tests', () => {
   let sessionsService: SessionsService;
@@ -19,33 +22,27 @@ describe('sessions integration tests', () => {
   } as unknown as MailerService;
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await sessionsCollection.drop()
-    await usersCollection.drop()
+    await DeviceSessionModel.db.dropCollection(SETTINGS.PATHS.SECURITY)
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
     await createIndexes()
     await container.unbind(MailerService)
     container.bind(MailerService).toConstantValue(nodemailerService);
     sessionsService = container.get(SessionsService);
     authService = container.get(AuthService)
     jwtService = container.get(JwtService)
-    // nodemailerService.sendEmail = jest
-    //   .fn()
-    //   .mockImplementation(
-    //     (email: string, template: string) =>
-    //       Promise.resolve(true)
-    //   );
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
   beforeEach(async () => {
-    await sessionsCollection.drop()
-    await usersCollection.drop()
+    await DeviceSessionModel.db.dropCollection(SETTINGS.PATHS.SECURITY)
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
     await createIndexes()
   })
 
@@ -68,13 +65,13 @@ describe('sessions integration tests', () => {
     const tokens2 = await authService.checkCredentials(loginDto);
     const payload2 = jwtService.verifyRefreshToken(tokens2.refreshToken)
 
-    const session1: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: new Date(payload1!.iat).toISOString() }) as ISessionDb
-    expect(session1.lastActiveDate).toEqual(new Date(payload1!.iat).toISOString())
-    const sessionView: ISessionDb | null = await sessionsService.getSession(payload1?.deviceId!, payload1?.iat!)
+    const session1: ISessionDb = await DeviceSessionModel.findOne({ lastActiveDate: new Date(payload1!.iat) }) as ISessionDb
+    expect(session1.lastActiveDate).toEqual(new Date(payload1!.iat))
+    const sessionView: ISessionDb = await sessionsService.getSession(payload1?.deviceId!, payload1?.iat!)
     expect(sessionView?.lastActiveDate).toEqual(session1.lastActiveDate)
 
-    const session2: ISessionDb = await sessionsCollection.findOne({ lastActiveDate: new Date(payload2!.iat).toISOString() }) as ISessionDb
-    expect(session2.lastActiveDate).toEqual(new Date(payload2!.iat).toISOString())
+    const session2: ISessionDb = await DeviceSessionModel.findOne({ lastActiveDate: new Date(payload2!.iat) }) as ISessionDb
+    expect(session2.lastActiveDate).toEqual(new Date(payload2!.iat))
 
     expect(session1.userId).toEqual(session2.userId);
     expect(session1._id).not.toEqual(session2._id)
@@ -91,12 +88,12 @@ describe('sessions integration tests', () => {
     }
     const tokens = await authService.checkCredentials(loginDto)
     const payload = jwtService.verifyRefreshToken(tokens.refreshToken)
-    let session = await sessionsCollection.findOne({ lastActiveDate: new Date(payload!.iat).toISOString() })
+    let session = await DeviceSessionModel.findOne({ lastActiveDate: new Date(payload!.iat) })
     expect(session).not.toBeNull()
 
     await sessionsService.logout(tokens.refreshToken);
 
-    session = await sessionsCollection.findOne({ lastActiveDate: new Date(payload!.iat).toISOString() })
+    session = await DeviceSessionModel.findOne({ lastActiveDate: new Date(payload!.iat) })
     expect(session).toBeNull()
   })
 

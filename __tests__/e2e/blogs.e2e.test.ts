@@ -1,4 +1,4 @@
-import { blogsCollection, client, postsCollection, runDb } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import { BlogInputModel, IBlogView, GetBlogsQuery } from "../../src/blogs/blogs.types";
 import { PagedResponse, PagingFilter, SortDirection } from "../../src/shared/types/pagination.types";
@@ -6,6 +6,9 @@ import { testSeeder } from "../test-helpers";
 import { BlogPostInputModel, IPostView } from "../../src/posts/posts.types";
 import { createApp } from "../../src/app";
 import { agent } from "supertest";
+import { BlogModel } from "../../src/blogs/blog.entity";
+import { PostModel } from "../../src/posts/post.entity";
+import mongoose from "mongoose";
 
 describe('blogs e2e tests', () => {
   let buff;
@@ -14,12 +17,12 @@ describe('blogs e2e tests', () => {
   let app: any;
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await blogsCollection.drop()
-    await postsCollection.drop()
+    await BlogModel.db.dropCollection(SETTINGS.PATHS.BLOGS)
+    await PostModel.db.dropCollection(SETTINGS.PATHS.POSTS)
     buff = Buffer.from(SETTINGS.SUPERUSER!);
     codedAuth = buff.toString('base64')
     app = createApp()
@@ -27,7 +30,7 @@ describe('blogs e2e tests', () => {
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
 
@@ -170,7 +173,7 @@ describe('blogs e2e tests', () => {
   })
 
   it('Test pagination', async () => {
-    await blogsCollection.drop();
+    await BlogModel.db.dropCollection(SETTINGS.PATHS.BLOGS);
     const sampleBlog =
     {
       name: 'first',
@@ -188,7 +191,7 @@ describe('blogs e2e tests', () => {
     }
     await testSeeder.createBlogs(blogInputs);
 
-    const allBlogs = await blogsCollection.find({}).toArray()
+    const allBlogs = await BlogModel.find().lean()
     expect(allBlogs.length).toEqual(total)
 
     let paging: PagingFilter = {

@@ -1,45 +1,27 @@
-import { ObjectId } from "mongodb";
-import { postsCollection } from "../db/mongoDb";
-import { CommentsRepository } from "../comments/comments.repository";
-import { IPostDb, PostInputModel, PostUpdateDto } from "./posts.types";
-import { inject, injectable } from "inversify";
-import { Post } from "./post.entity";
+import { ObjectId } from "../shared/types/objectId.type";
+import { PostUpdateDto } from "./posts.types";
+import { injectable } from "inversify";
+import { PostDocument, PostModel } from "./post.entity";
+import { CustomError } from "../shared/types/error.types";
+import { HttpStatuses } from "../shared/types/httpStatuses";
 
 @injectable()
 export class PostsRepository {
 
-  constructor(
-    @inject(CommentsRepository)
-    private readonly commentsRepository: CommentsRepository) { };
-
-  async createPost(newPost: Post): Promise<ObjectId> {
-    const insertRes = await postsCollection.insertOne(newPost);
-    if (insertRes.acknowledged) {
-      return insertRes.insertedId
-    }
-    throw new Error('Failed to create a post')
+  async savePost(post: PostDocument): Promise<ObjectId> {
+    await post.save();
+    return post._id;
   }
 
-  async getPost(id: ObjectId): Promise<IPostDb | null> {
-    const post = await postsCollection.findOne({ _id: id })
-    if (!post) {
-      return null
-    }
+  async getPost(id: ObjectId): Promise<PostDocument> {
+    const post = await PostModel.findOne({ _id: id }).orFail(
+      new CustomError('Post does not exist', HttpStatuses.NotFound)
+    )
     return post
   }
 
-  async editPost(id: ObjectId, input: PostInputModel): Promise<void> {
-    const res = await postsCollection.updateOne({ _id: id }, {
-      $set: { ...input, blogId: new ObjectId(input.blogId) }
-    })
-    if (res.acknowledged) {
-      return
-    }
-    throw new Error('Failed to update post')
-  }
-
   async updatePostsByBlogId(blogId: ObjectId, input: Partial<PostUpdateDto>): Promise<void> {
-    const res = await postsCollection.updateMany({ "blogId": blogId }, {
+    const res = await PostModel.updateMany({ "blogId": blogId }, {
       $set: {
         ...input
       }
@@ -50,20 +32,16 @@ export class PostsRepository {
     throw new Error('Failed to update posts by blogid')
   }
 
-  async deletePostsByBlogId(blogId: ObjectId): Promise<{ error: string } | undefined> {
-    const res = await postsCollection.deleteMany({ "blogId": blogId })
+  async deletePostsByBlogId(blogId: ObjectId): Promise<void> {
+    const res = await PostModel.deleteMany({ "blogId": blogId })
     if (res.acknowledged) {
       return
     }
-    return { error: 'Deletion failed' }
+    throw Error('Failed to delete posts by blogId')
   }
 
-  async deletePost(id: ObjectId): Promise<void> {
-    await this.commentsRepository.deleteCommentsByPost(id)
-    const res = await postsCollection.deleteOne({ _id: id })
-    if (res.acknowledged) {
-      return
-    }
-    throw new Error('Failed to delete a post')
+  async deletePost(post: PostDocument): Promise<boolean> {
+    const res = await post.deleteOne()
+    return res.acknowledged
   }
 }

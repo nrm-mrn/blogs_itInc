@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../../shared/types/objectId.type";
 import { UsersQueryRepository } from "../usersQuery.repository";
 import { UserService } from "../users.service";
 import { APIErrorResult } from "../../shared/types/error.types";

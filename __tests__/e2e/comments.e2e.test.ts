@@ -1,7 +1,6 @@
-import { ObjectId } from "mongodb";
 import { SETTINGS } from "../../src/settings/settings";
 import { createUsers, loginUser, PostDto, testingDtosCreator, testSeeder } from "../test-helpers";
-import { blogsCollection, client, commentsCollection, postsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
 import { IBlogView } from "../../src/blogs/blogs.types";
 import { PagedResponse } from "../../src/shared/types/pagination.types";
 import { IPostView } from "../../src/posts/posts.types";
@@ -10,6 +9,11 @@ import { IUserView } from "../../src/users/user.types";
 import { createApp } from "../../src/app";
 import { agent } from "supertest";
 import TestAgent from "supertest/lib/agent";
+import { UserModel } from "../../src/users/user.entity";
+import { BlogModel } from "../../src/blogs/blog.entity";
+import { PostModel } from "../../src/posts/post.entity";
+import { CommentModel } from "../../src/comments/comment.entity";
+import mongoose from "mongoose";
 
 
 describe('comments e2e test', () => {
@@ -21,14 +25,14 @@ describe('comments e2e test', () => {
 
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await usersCollection.drop()
-    await blogsCollection.drop()
-    await postsCollection.drop()
-    await commentsCollection.drop()
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
+    await BlogModel.db.dropCollection(SETTINGS.PATHS.BLOGS)
+    await PostModel.db.dropCollection(SETTINGS.PATHS.USERS)
+    await CommentModel.db.dropCollection(SETTINGS.PATHS.COMMENTS)
 
     app = createApp();
     req = agent(app);
@@ -45,7 +49,7 @@ describe('comments e2e test', () => {
   }, 15000)
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
   it('should get 200 and 404 on get comments for post', async () => {
@@ -54,7 +58,7 @@ describe('comments e2e test', () => {
     const commentsPage: PagedResponse<ICommentView> = res.body
     expect(Array.isArray(commentsPage.items)).toBe(true);
     expect(commentsPage.items.length).toBe(0);
-    const invailPost = new ObjectId()
+    const invailPost = new mongoose.Types.ObjectId()
     await req.get(SETTINGS.PATHS.POSTS + `/${invailPost}/comments`).expect(404)
   })
 
@@ -128,7 +132,7 @@ describe('comments e2e test', () => {
       .expect(403)
 
     //should not find non existent comment
-    const invalidCommentId = new ObjectId().toString()
+    const invalidCommentId = new mongoose.Types.ObjectId().toString()
     res = await req.put(SETTINGS.PATHS.COMMENTS + `/${invalidCommentId}`)
       .set({ 'authorization': 'Bearer ' + token1 })
       .send(updatedComment)
@@ -168,7 +172,7 @@ describe('comments e2e test', () => {
       .expect(403)
 
     //should not find non existent comment
-    const invalidCommentId = new ObjectId().toString()
+    const invalidCommentId = new mongoose.Types.ObjectId().toString()
     res = await req.delete(SETTINGS.PATHS.COMMENTS + `/${invalidCommentId}`)
       .set({ 'authorization': 'Bearer ' + token1 })
       .expect(404)

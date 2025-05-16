@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import { createApp } from "../../src/app";
-import { client, requestsCollection, runDb, sessionsCollection, usersCollection } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
+import { ApiReqModel } from "../../src/security/apiRequest.entity";
 import { SETTINGS } from "../../src/settings/settings";
 import { UserDto } from "../test-helpers";
 import { agent, Test } from 'supertest';
@@ -9,20 +11,18 @@ describe('rate limiter tests', () => {
   let req: any
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await usersCollection.drop()
-    await sessionsCollection.drop()
-    await requestsCollection.drop()
+    await ApiReqModel.db.dropCollection(SETTINGS.PATHS.REQUESTS)
     app = createApp();
     req = agent(app);
   })
 
   afterAll(async () => {
-    await requestsCollection.drop()
-    await client.close()
+    await ApiReqModel.db.dropCollection(SETTINGS.PATHS.REQUESTS)
+    await mongoose.connection.close()
   })
 
   it('should save requests to db and enforce limits', async () => {
@@ -51,12 +51,12 @@ describe('rate limiter tests', () => {
     }
 
     //check that new requests will not be added to db until limiter resets
-    const count = await requestsCollection.countDocuments({});
+    const count = await ApiReqModel.countDocuments({}).exec()
     await req.post(SETTINGS.PATHS.AUTH + '/login')
       .send({ loginOrEmail: validUser.login, password: 'invalid' })
       .expect(429)
 
-    const newCount = await requestsCollection.countDocuments({});
+    const newCount = await ApiReqModel.countDocuments({}).exec()
     expect(newCount).toEqual(count)
 
     //wait for timeout

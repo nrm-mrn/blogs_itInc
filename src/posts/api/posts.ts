@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../../shared/types/objectId.type";
 import { PostsQueryRepository } from "../postsQuery.repository";
 import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
 import { PostsService } from "../posts.service";
@@ -89,8 +89,9 @@ export class PostsController {
       content: req.body.content,
     }
     try {
-      const { data } = await this.commentsService.createComment(input);
-      res.status(HttpStatuses.Created).send(data);
+      const commentId = await this.commentsService.createComment(input);
+      const comment = await this.commentsQueryRepo.getCommentById(commentId);
+      res.status(HttpStatuses.Created).send(comment);
       return
     } catch (err) {
       next(err)

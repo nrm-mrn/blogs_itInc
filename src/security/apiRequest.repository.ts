@@ -1,31 +1,26 @@
-import { ObjectId, WithId } from "mongodb";
-import { ApiRequest } from "./apiRequest.entity";
-import { requestsCollection } from "../db/mongoDb";
-import { IRequestDb } from "./apiRequest.types";
+import { ObjectId } from "../shared/types/objectId.type";
+import { ApiReqDocument, ApiReqModel } from "./apiRequest.entity";
 import { DateTime, Duration } from "luxon";
 import { injectable } from "inversify";
 
 @injectable()
 export class ApiRequestsRepository {
-  async saveRequest(input: ApiRequest): Promise<ObjectId> {
-    const insertRes = await requestsCollection.insertOne(input);
-    if (insertRes.acknowledged) {
-      return insertRes.insertedId
-    }
-    throw new Error('Failed to save a request')
+  async save(request: ApiReqDocument): Promise<ObjectId> {
+    const res = await request.save();
+    return res._id
   }
 
-  async getRequestsForPeriod(ip: string, URL: string, seconds: number): Promise<WithId<IRequestDb>[]> {
+  async getRequestsForPeriod(ip: string, URL: string, seconds: number): Promise<ApiReqDocument[]> {
     const timeLimit = DateTime.utc()
       .minus(Duration.fromMillis(seconds * 1000))
       .toJSDate();
-    const requests = await requestsCollection.find(
+    const requests = await ApiReqModel.find(
       {
         ip, URL, date: {
           $gt: timeLimit
         }
       }
-    ).toArray();
+    ).exec()
     return requests
   }
 }

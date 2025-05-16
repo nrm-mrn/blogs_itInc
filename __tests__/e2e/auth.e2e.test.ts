@@ -1,4 +1,4 @@
-import { client, requestsCollection, runDb, usersCollection } from "../../src/db/mongoDb";
+import { runDb } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
 import request, { agent } from 'supertest';
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
@@ -11,6 +11,9 @@ import { container } from "../../src/ioc";
 import { createApp } from "../../src/app";
 import { registerUser, loginUser, testingDtosCreator, UserDto } from "../test-helpers";
 import { ApiRequestService } from "../../src/security/apiRequest.service";
+import { UserModel } from "../../src/users/user.entity";
+import { ApiReqModel } from "../../src/security/apiRequest.entity";
+import mongoose from "mongoose";
 
 
 describe('auth e2e tests', () => {
@@ -20,11 +23,11 @@ describe('auth e2e tests', () => {
   let nodemailerService: MailerService;
 
   beforeAll(async () => {
-    const res = await runDb(SETTINGS.MONGO_URL)
+    const res = await runDb()
     if (!res) {
       process.exit(1)
     }
-    await usersCollection.drop()
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
     usersRepository = container.get(UsersRepository)
     nodemailerService = container.get(MailerService)
     app = createApp();
@@ -36,12 +39,12 @@ describe('auth e2e tests', () => {
 
 
   beforeEach(async () => {
-    await usersCollection.drop();
-    await requestsCollection.drop();
+    await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
+    await ApiReqModel.db.dropCollection(SETTINGS.PATHS.REQUESTS)
   })
 
   afterAll(async () => {
-    await client.close()
+    await mongoose.connection.close()
   })
 
   it('Should check user credentials and return tokens', async () => {
@@ -177,8 +180,8 @@ describe('auth e2e tests', () => {
   describe('password recovery tests', () => {
 
     beforeEach(async () => {
-      await usersCollection.drop();
-      await requestsCollection.drop();
+      await UserModel.db.dropCollection(SETTINGS.PATHS.USERS)
+      await ApiReqModel.db.dropCollection(SETTINGS.PATHS.REQUESTS)
     })
 
     it('should reset a password', async () => {
@@ -195,7 +198,7 @@ describe('auth e2e tests', () => {
         .post(SETTINGS.PATHS.AUTH + '/password-recovery')
         .send({ email: 'nonexistent@gmail.com' })
         .expect(HttpStatuses.NoContent)
-      let userDb: IUserDb | null = await usersRepository.getUserById(new ObjectId(user.id))
+      let userDb: IUserDb | null = await usersRepository.findUserById(new ObjectId(user.id))
       expect(userDb).not.toBeNull()
       expect(userDb?.passwordRecovery).toBeNull()
       expect(nodemailerService.sendEmail).not.toHaveBeenCalled()
@@ -204,7 +207,7 @@ describe('auth e2e tests', () => {
         .post(SETTINGS.PATHS.AUTH + '/password-recovery')
         .send({ email: userDto.email })
         .expect(HttpStatuses.NoContent)
-      userDb = await usersRepository.getUserById(new ObjectId(user.id))
+      userDb = await usersRepository.findUserById(new ObjectId(user.id))
       expect(nodemailerService.sendEmail).toHaveBeenCalled()
       expect(nodemailerService.sendEmail).toHaveBeenCalledTimes(1)
       expect(userDb?.passwordRecovery).not.toBeNull()

@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { blogsCollection, createIndexes, postsCollection, requestsCollection, sessionsCollection, usersCollection } from './db/mongoDb';
+import { createIndexes } from './db/mongoDb';
 import { SETTINGS } from './settings/settings';
 import { errorHandler } from './shared/middlewares/errorHandler.middleware';
 import cookieParser from 'cookie-parser';
@@ -10,6 +10,7 @@ import { commentsRouter } from './comments/comments.router';
 import { usersRouter } from './users/users.router';
 import { securityRouter } from './security/security.router';
 import { authRouter } from './auth/auth.router';
+import { UserModel } from './users/user.entity';
 
 
 export function createApp() {
@@ -29,11 +30,7 @@ export function createApp() {
   app.set('trust proxy', true)
 
   app.delete('/testing/all-data', async (req: Request, res: Response) => {
-    await postsCollection.drop();
-    await blogsCollection.drop();
-    await usersCollection.drop();
-    await sessionsCollection.drop();
-    await requestsCollection.drop();
+    await UserModel.db.dropDatabase()
     await createIndexes();
     res.sendStatus(204);
     return

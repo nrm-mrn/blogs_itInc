@@ -3,15 +3,15 @@ import { BlogInputModel, IBlogView } from "../src/blogs/blogs.types";
 import { BlogService } from "../src/blogs/blogs.service";
 import { PostInputModel, IPostView } from "../src/posts/posts.types";
 import { PostsService } from "../src/posts/posts.service";
-import { ObjectId } from "mongodb";
+import { ObjectId } from "../src/shared/types/objectId.type";
 import { IUserView, UserInputModel } from "../src/users/user.types";
-import { User } from "../src/users/user.entity";
-import { UsersRepository } from "../src/users/users.repository";
+import { User, UserModel } from "../src/users/user.entity";
 import { BlogQueryRepository } from "../src/blogs/blogsQuery.repository";
 import { container } from "../src/ioc";
 import { PostsQueryRepository } from "../src/posts/postsQuery.repository";
 import { UserService } from "../src/users/users.service";
 import TestAgent from "supertest/lib/agent";
+import mongoose from "mongoose";
 
 export type UserDto = {
   login: string
@@ -118,10 +118,16 @@ export const createUsers = async (req: TestAgent, count: number) => {
   return users;
 };
 
-const userRepository = container.get(UsersRepository)
 
 export const insertUser = async (user: User) => {
-  await userRepository.createUser(user);
+  const userModel = new UserModel({
+    login: user.login,
+    email: user.email,
+    emailConfirmation: user.emailConfirmation,
+    passwordHash: user.passwordHash,
+    passwordRecovery: user.passwordRecovery
+  })
+  await userModel.save();
   return
 }
 
@@ -156,7 +162,7 @@ export const testSeeder = {
     const postIds: Array<ObjectId> = [];
     const posts: Array<IPostView> = [];
     for (let i = 0; i < input.length; i++) {
-      const postInput: PostInputModel = { ...input[0], blogId: new ObjectId(input[0].blogId) }
+      const postInput: PostInputModel = { ...input[0], blogId: new mongoose.Types.ObjectId(input[0].blogId) }
       const postId = await postService.createPost(postInput)
       postIds.push(postId)
     }
