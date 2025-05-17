@@ -64,8 +64,8 @@ export const PasswordRecoverySchema = new Schema<PasswordRecovery>({
 })
 
 export const UserSchema = new Schema<User>({
-  email: { type: String, required: true },
-  login: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  login: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   emailConfirmation: { type: EmailConfirmationSchema, required: true },
   passwordRecovery: { type: PasswordRecoverySchema, required: false },

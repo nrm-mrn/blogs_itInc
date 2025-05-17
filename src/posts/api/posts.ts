@@ -11,6 +11,7 @@ import { HttpStatuses } from "../../shared/types/httpStatuses";
 import { GetPostCommentsSanitizedQuery, PostInputModel, IPostView } from "../posts.types";
 import { CommentsQueryRepository } from "../../comments/commentsQuery.repository";
 import { inject, injectable } from "inversify";
+import mongoose from "mongoose";
 
 @injectable()
 export class PostsController {
@@ -104,6 +105,10 @@ export class PostsController {
     const dto: GetCommentsDto = {
       postId,
       paginator: pagination,
+    }
+    if (req.user?.id) {
+      const userId = new mongoose.Types.ObjectId(req.user.id)
+      dto.userId = userId
     }
     try {
       const data = await this.commentsQueryRepo.getComments(dto);

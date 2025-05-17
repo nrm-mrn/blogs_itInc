@@ -1,25 +1,38 @@
 import { ObjectId } from "../shared/types/objectId.type";
-import { ICommentView, GetCommentsDto } from "./comments.types";
+import { ICommentView, GetCommentsDto, ILikesInfoView } from "./comments.types";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { PagedResponse } from "../shared/types/pagination.types";
 import { injectable } from "inversify";
 import { CommentModel } from "./comment.entity";
 import { PostModel } from "../posts/post.entity";
+import { CommentLikeModel, LikeStatus } from "./commentLike.entity";
 
 @injectable()
 export class CommentsQueryRepository {
 
-  async getCommentById(id: ObjectId): Promise<ICommentView> {
+  async getCommentById(id: ObjectId, userId?: ObjectId): Promise<ICommentView> {
     const comment = await CommentModel.findOne({ _id: id });
     if (!comment) {
       throw new CustomError('Comment id not found', HttpStatuses.NotFound)
+    }
+    let likesInfo: ILikesInfoView = {
+      likesCount: comment.likesCount,
+      dislikesCount: comment.dislikesCount,
+      myStatus: LikeStatus.NONE,
+    }
+    if (userId) {
+      const like = await CommentLikeModel.findOne({ userId })
+      if (like) {
+        likesInfo.myStatus = like.status
+      }
     }
     return {
       id: comment._id.toString(),
       content: comment.content,
       commentatorInfo: comment.commentatorInfo,
-      createdAt: comment.createdAt.toISOString()
+      createdAt: comment.createdAt.toISOString(),
+      likesInfo
     }
   }
 
@@ -36,14 +49,33 @@ export class CommentsQueryRepository {
       .limit(paging.pageSize)
       .exec();
     const total = await CommentModel.countDocuments(filter).exec();
-    const commentsView: ICommentView[] = comments.map(comment => {
-      return {
-        id: comment._id.toString(),
-        content: comment.content,
-        commentatorInfo: comment.commentatorInfo,
-        createdAt: comment.createdAt.toISOString(),
-      }
-    })
+
+    //WARN: might be dangerous if pageSize gets > 1000
+    const commentsView: ICommentView[] = await Promise.all(
+      comments.map(async comment => {
+        const likesInfo: ILikesInfoView = {
+          likesCount: comment.likesCount,
+          dislikesCount: comment.dislikesCount,
+          myStatus: LikeStatus.NONE
+        }
+        if (dto.userId) {
+          const like = await CommentLikeModel.findOne({
+            commentId: comment._id,
+            userId: dto.userId
+          })
+          if (like) {
+            likesInfo.myStatus = like.status
+          }
+        }
+        return {
+          id: comment._id.toString(),
+          content: comment.content,
+          commentatorInfo: comment.commentatorInfo,
+          createdAt: comment.createdAt.toISOString(),
+          likesInfo
+        }
+      })
+    )
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
       page: paging.pageNumber,

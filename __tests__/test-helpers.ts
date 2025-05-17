@@ -12,6 +12,9 @@ import { PostsQueryRepository } from "../src/posts/postsQuery.repository";
 import { UserService } from "../src/users/users.service";
 import TestAgent from "supertest/lib/agent";
 import mongoose from "mongoose";
+import { CreateCommentDto, ICommentView } from "../src/comments/comments.types";
+import { CommentsService } from "../src/comments/comments.service";
+import { CommentsQueryRepository } from "../src/comments/commentsQuery.repository";
 
 export type UserDto = {
   login: string
@@ -78,6 +81,20 @@ export const testingDtosCreator = {
       )
     }
     return posts
+  },
+
+  createCommentsDto(postId: string, userId: string, count: number) {
+    const comments: Array<CommentDto> = [];
+    for (let i = 0; i < count; i++) {
+      comments.push(
+        {
+          userId,
+          postId,
+          content: `${i} some content`,
+        }
+      )
+    }
+    return comments
   },
 }
 
@@ -150,13 +167,42 @@ export type PostDto = {
   content: string;
   blogId: string;
 }
+
+export type CommentDto = {
+  userId: string;
+  postId: string;
+  content: string;
+}
+
 const postService = container.get(PostsService)
 const postQueryRepo = container.get(PostsQueryRepository)
 const blogService = container.get(BlogService)
 const blogQueryRepo = container.get(BlogQueryRepository)
 const userService = container.get(UserService)
+const commentService = container.get(CommentsService)
+const commentQueryRepo = container.get(CommentsQueryRepository)
 
 export const testSeeder = {
+
+  async createComments(input: Array<CommentDto>) {
+    const commentIds: Array<ObjectId> = [];
+    const comments: Array<ICommentView> = [];
+    for (let i = 0; i < input.length; i++) {
+      const commentId = await commentService.createComment(
+        {
+          userId: input[i].userId,
+          postId: new mongoose.Types.ObjectId(input[i].postId),
+          content: input[i].content
+        }
+      )
+      commentIds.push(commentId)
+    }
+    for (const commentId of commentIds) {
+      const comment = await commentQueryRepo.getCommentById(commentId);
+      comments.push(comment)
+    }
+    return comments
+  },
 
   async createPosts(input: Array<PostDto>) {
     const postIds: Array<ObjectId> = [];

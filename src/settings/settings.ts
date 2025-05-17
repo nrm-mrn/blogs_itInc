@@ -14,7 +14,8 @@ export const SETTINGS = {
     COMMENTS: '/comments',
     RTOKEN: '/refresh-tokens',
     SECURITY: '/security',
-    REQUESTS: '/requests'
+    REQUESTS: '/requests',
+    COMMENTS_LIKES: '/comments_likes'
   },
   DB_NAME: process.env.DB_NAME || 'test',
   MONGO_URL: process.env.MONGO_URL || '',

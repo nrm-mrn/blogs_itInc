@@ -9,6 +9,7 @@ import { idToObjectId } from "../shared/shared.sanitizers";
 import { jwtGuard } from "../auth/guards/jwtGuard";
 import { paramObjectIdValidator } from "../shared/middlewares/shared.validators";
 import { commentContentValidator } from "../comments/api/middleware/comments.validators";
+import { jwtOptionalGuard } from "../auth/guards/jwtOptionalGuard";
 
 export const postsRouter = Router({})
 
@@ -59,6 +60,7 @@ postsRouter.post('/:id/comments',
 postsRouter.get('/:id/comments',
   paramObjectIdValidator,
   inputValidationResultMiddleware,
+  jwtOptionalGuard,
   paginationQuerySanitizerChain,
   idToObjectId,
   postsController.getCommentsForPost.bind(postsController)
