@@ -8,9 +8,9 @@ import { CommentLikeDocument, CommentLikeModel } from "./commentLike.entity";
 @injectable()
 export class CommentsRepository {
 
-  async save(newComment: CommentDocument | CommentLikeDocument): Promise<ObjectId> {
-    const comment = await newComment.save();
-    return comment._id
+  async save(doc: CommentDocument | CommentLikeDocument): Promise<ObjectId> {
+    const savedDoc = await doc.save();
+    return savedDoc._id
   }
 
   async getCommentById(id: ObjectId): Promise<CommentDocument> {

@@ -317,6 +317,67 @@ describe('comments e2e test', () => {
       expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
     })
 
+    it.only('should change like statuses', async () => {
+      const commentId = comments[1].id
+      const validLikeBody = { likeStatus: "Like" }
+
+      //unauthenticated error
+      await req.put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
+        .send()
+        .expect(401)
+
+      //create a like
+      let { accessToken: token1 } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
+      await req
+        .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+        .send(validLikeBody)
+        .expect(HttpStatuses.NoContent)
+
+      //check like status with authenticated req
+      let res = await req
+        .get(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+      let like = res.body
+      expect(like.likesInfo.likesCount).toEqual(1)
+      expect(like.likesInfo.dislikesCount).toEqual(0)
+      expect(like.likesInfo.myStatus).toEqual(LikeStatus.LIKE)
+
+      //dislike
+      const validDislikeBody = { likeStatus: "Dislike" }
+      await req
+        .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+        .send(validDislikeBody)
+        .expect(HttpStatuses.NoContent)
+
+      //check like status with authenticated req
+      res = await req
+        .get(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+      like = res.body
+      expect(like.likesInfo.likesCount).toEqual(0)
+      expect(like.likesInfo.dislikesCount).toEqual(1)
+      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
+
+      //none
+      const validNoneBody = { likeStatus: "None" }
+      await req
+        .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+        .send(validNoneBody)
+        .expect(HttpStatuses.NoContent)
+
+      //check like status with authenticated req
+      res = await req
+        .get(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+      like = res.body
+      expect(like.likesInfo.likesCount).toEqual(0)
+      expect(like.likesInfo.dislikesCount).toEqual(0)
+      expect(like.likesInfo.myStatus).toEqual(LikeStatus.NONE)
+    })
+
     it('should not change like status with multiple requests', async () => {
       const commentId = comments[0].id
       const validLikeBody = { likeStatus: "Like" }
