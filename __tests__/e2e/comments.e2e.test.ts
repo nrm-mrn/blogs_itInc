@@ -16,6 +16,7 @@ import { CommentModel } from "../../src/comments/comment.entity";
 import mongoose from "mongoose";
 import { CommentLikeDocument, CommentLikeModel, LikeStatus } from "../../src/comments/commentLike.entity";
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
+import { ApiRequestService } from "../../src/security/apiRequest.service";
 
 
 describe('comments e2e test', () => {
@@ -36,10 +37,13 @@ describe('comments e2e test', () => {
     await PostModel.db.dropCollection(SETTINGS.PATHS.USERS)
     await CommentModel.db.dropCollection(SETTINGS.PATHS.COMMENTS)
 
+    jest.spyOn(ApiRequestService.prototype, 'getDocsCountForPeriod')
+      .mockResolvedValue(1)
+
     app = createApp();
     req = agent(app);
 
-    users = await createUsers(req, 2)
+    users = await createUsers(req, 3)
     const blogsInput = testingDtosCreator.createBlogsDto(3)
     blogs = await testSeeder.createBlogs(blogsInput);
     const postsInput: Array<PostDto> = [];
@@ -317,21 +321,19 @@ describe('comments e2e test', () => {
       expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
     })
 
-    it.only('should change like statuses', async () => {
+    it('Should change statuses with different users interactions', async () => {
       const commentId = comments[1].id
       const validLikeBody = { likeStatus: "Like" }
 
-      //unauthenticated error
-      await req.put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
-        .send()
-        .expect(401)
-
-      //create a like
       let { accessToken: token1 } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
+      let { accessToken: token2 } = await loginUser(req, { loginOrEmail: users[1].login, password: '12345678' });
+      let { accessToken: token3 } = await loginUser(req, { loginOrEmail: users[2].login, password: '12345678' });
+      //create a dislike by user1
+      const validDislikeBody = { likeStatus: "Dislike" }
       await req
         .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
         .set({ 'authorization': 'Bearer ' + token1 })
-        .send(validLikeBody)
+        .send(validDislikeBody)
         .expect(HttpStatuses.NoContent)
 
       //check like status with authenticated req
@@ -339,15 +341,14 @@ describe('comments e2e test', () => {
         .get(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
         .set({ 'authorization': 'Bearer ' + token1 })
       let like = res.body
-      expect(like.likesInfo.likesCount).toEqual(1)
-      expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.LIKE)
+      expect(like.likesInfo.likesCount).toEqual(0)
+      expect(like.likesInfo.dislikesCount).toEqual(1)
+      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
 
-      //dislike
-      const validDislikeBody = { likeStatus: "Dislike" }
+      //create a dislike by user2
       await req
         .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
-        .set({ 'authorization': 'Bearer ' + token1 })
+        .set({ 'authorization': 'Bearer ' + token2 })
         .send(validDislikeBody)
         .expect(HttpStatuses.NoContent)
 
@@ -357,15 +358,14 @@ describe('comments e2e test', () => {
         .set({ 'authorization': 'Bearer ' + token1 })
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(0)
-      expect(like.likesInfo.dislikesCount).toEqual(1)
+      expect(like.likesInfo.dislikesCount).toEqual(2)
       expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
 
-      //none
-      const validNoneBody = { likeStatus: "None" }
+      //create a like by user3
       await req
         .put(SETTINGS.PATHS.COMMENTS + `/${commentId}/like-status`)
-        .set({ 'authorization': 'Bearer ' + token1 })
-        .send(validNoneBody)
+        .set({ 'authorization': 'Bearer ' + token3 })
+        .send(validLikeBody)
         .expect(HttpStatuses.NoContent)
 
       //check like status with authenticated req
@@ -373,9 +373,9 @@ describe('comments e2e test', () => {
         .get(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
         .set({ 'authorization': 'Bearer ' + token1 })
       like = res.body
-      expect(like.likesInfo.likesCount).toEqual(0)
-      expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.NONE)
+      expect(like.likesInfo.likesCount).toEqual(1)
+      expect(like.likesInfo.dislikesCount).toEqual(2)
+      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
     })
 
     it('should not change like status with multiple requests', async () => {
@@ -404,10 +404,14 @@ describe('comments e2e test', () => {
     })
 
     it('should delete likes when a comment is deleted', async () => {
-      const commentId = comments[0].id
+      const commentId1 = comments[0].id
+      const commentId2 = comments[1].id
       let { accessToken: token1 } = await loginUser(req, { loginOrEmail: users[0].login, password: '12345678' });
 
-      await req.delete(SETTINGS.PATHS.COMMENTS + `/${commentId}`)
+      await req.delete(SETTINGS.PATHS.COMMENTS + `/${commentId1}`)
+        .set({ 'authorization': 'Bearer ' + token1 })
+        .expect(204)
+      await req.delete(SETTINGS.PATHS.COMMENTS + `/${commentId2}`)
         .set({ 'authorization': 'Bearer ' + token1 })
         .expect(204)
 
