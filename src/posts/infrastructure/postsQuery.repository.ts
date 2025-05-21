@@ -45,10 +45,11 @@ export class PostsQueryRepository {
           postId: { $in: postIds }
         }
       )
+      const likesMap = new Map(likes.map(like => [like.postId.toString(), like.status]))
       postsView.forEach(post => {
-        const like = likes.find((like) => like.postId.toString() === post.id)
-        if (like) {
-          post.extendedLikesInfo.myStatus = like.status;
+        const likeStatus = likesMap.get(post.id)
+        if (likeStatus) {
+          post.extendedLikesInfo.myStatus = likeStatus;
         }
       })
     }
