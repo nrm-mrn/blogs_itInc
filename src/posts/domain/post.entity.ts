@@ -141,7 +141,9 @@ export const NewestLikeSchema = new mongoose.Schema({
   addedAt: { type: String, required: true },
   userId: { type: String, required: true },
   login: { type: String, required: true },
-})
+},
+  { _id: false }
+)
 
 export const PostSchema = new mongoose.Schema<Post>({
   title: { type: String, required: true },
