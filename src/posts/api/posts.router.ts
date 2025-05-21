@@ -16,6 +16,7 @@ export const postsRouter = Router({})
 const postsController = container.get(PostsController);
 
 postsRouter.get('/',
+  jwtOptionalGuard,
   paginationQuerySanitizerChain,
   postsController.getAllPosts.bind(postsController)
 )
