@@ -5,7 +5,7 @@ import { SETTINGS } from './settings/settings';
 import { errorHandler } from './shared/middlewares/errorHandler.middleware';
 import cookieParser from 'cookie-parser';
 import { blogsRouter } from './blogs/blogs.router';
-import { postsRouter } from './posts/posts.router';
+import { postsRouter } from './posts/api/posts.router';
 import { commentsRouter } from './comments/comments.router';
 import { usersRouter } from './users/users.router';
 import { securityRouter } from './security/security.router';

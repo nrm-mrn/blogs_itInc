@@ -8,6 +8,7 @@ import { inputValidationResultMiddleware } from "../shared/middlewares/validatio
 import { idToObjectId } from "../shared/shared.sanitizers"
 import { paginationQuerySanitizerChain } from "../shared/middlewares/shared.sanitizers"
 import { postInputValidator } from "../posts/api/middleware/posts.validators"
+import { jwtOptionalGuard } from "../auth/guards/jwtOptionalGuard"
 
 export const blogsRouter = Router({})
 
@@ -36,6 +37,7 @@ blogsRouter.get('/:id/posts',
   blogGetValidation,
   inputValidationResultMiddleware,
   paginationQuerySanitizerChain,
+  jwtOptionalGuard,
   idToObjectId,
   blogsController.getBlogPosts.bind(blogsController)
 )

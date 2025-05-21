@@ -1,5 +1,6 @@
 import { body } from "express-validator";
 import { paramObjectIdValidator } from "../../../shared/middlewares/shared.validators";
+import { PostLikeStatus } from "../../application/posts.dto";
 
 const postTitleValidator = body('title')
   .isString().withMessage('Title should be string')
@@ -19,6 +20,10 @@ const postContentValidator = body('content')
   .notEmpty().withMessage('Body should not be empty')
   .isLength({ max: 1000 })
   .withMessage('Content should be 1000 characters max');
+
+export const postLikeStatusValidator = body('likeStatus')
+  .isIn(Object.values(PostLikeStatus))
+  .withMessage('Like status should be valid')
 
 export const postGetValidator = [
   paramObjectIdValidator

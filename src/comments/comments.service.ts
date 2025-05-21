@@ -7,8 +7,8 @@ import { UserService } from "../users/users.service";
 import { inject, injectable } from "inversify";
 import { Comment, CommentatorInfo, CommentDocument, CommentModel } from "./comment.entity";
 import mongoose from "mongoose";
-import { PostsRepository } from "../posts/posts.repository";
-import { CommentLike, CommentLikeDocument, CommentLikeModel, LikeStatus } from "./commentLike.entity";
+import { PostsRepository } from "../posts/infrastructure/posts.repository";
+import { CommentLike, CommentLikeDocument, CommentLikeModel, CommentLikeStatus } from "./commentLike.entity";
 
 @injectable()
 export class CommentsService {
@@ -86,11 +86,11 @@ export class CommentsService {
     comment: CommentDocument,
     dto: LikeInputDto): Promise<void> {
     switch (dto.status) {
-      case LikeStatus.LIKE: {
+      case CommentLikeStatus.LIKE: {
         comment.likesCount += 1;
         break
       }
-      case LikeStatus.DISLIKE: {
+      case CommentLikeStatus.DISLIKE: {
         comment.dislikesCount += 1;
         break
       }
@@ -116,22 +116,22 @@ export class CommentsService {
     dto: LikeInputDto): Promise<void> {
     if (like.status !== dto.status) {
       switch (like.status) {
-        case LikeStatus.LIKE: {
+        case CommentLikeStatus.LIKE: {
           comment.likesCount -= 1
-          if (dto.status === LikeStatus.DISLIKE) {
+          if (dto.status === CommentLikeStatus.DISLIKE) {
             comment.dislikesCount += 1
           }
           break;
         }
-        case LikeStatus.DISLIKE: {
+        case CommentLikeStatus.DISLIKE: {
           comment.dislikesCount -= 1;
-          if (dto.status === LikeStatus.LIKE) {
+          if (dto.status === CommentLikeStatus.LIKE) {
             comment.likesCount += 1;
           }
           break;
         }
-        case LikeStatus.NONE: {
-          if (dto.status === LikeStatus.LIKE) {
+        case CommentLikeStatus.NONE: {
+          if (dto.status === CommentLikeStatus.LIKE) {
             comment.likesCount += 1;
             break
           }

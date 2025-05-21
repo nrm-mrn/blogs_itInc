@@ -1,14 +1,14 @@
 import { runDb } from "../../src/db/mongoDb";
 import { SETTINGS } from "../../src/settings/settings";
-import { BlogInputModel, IBlogView, GetBlogsQuery } from "../../src/blogs/blogs.types";
+import { BlogInputModel, IBlogView, GetBlogsQuery, BlogPostInputModel } from "../../src/blogs/blogs.types";
 import { PagedResponse, PagingFilter, SortDirection } from "../../src/shared/types/pagination.types";
 import { testSeeder } from "../test-helpers";
-import { BlogPostInputModel, IPostView } from "../../src/posts/posts.types";
 import { createApp } from "../../src/app";
 import { agent } from "supertest";
 import { BlogModel } from "../../src/blogs/blog.entity";
-import { PostModel } from "../../src/posts/post.entity";
 import mongoose from "mongoose";
+import { IPostView } from "../../src/posts/api/posts.api.models";
+import { PostModel } from "../../src/posts/domain/post.entity";
 
 describe('blogs e2e tests', () => {
   let buff;

@@ -1,17 +1,20 @@
 import { NextFunction, Response } from "express";
 import { ObjectId } from "../../shared/types/objectId.type";
-import { PostsQueryRepository } from "../postsQuery.repository";
 import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
-import { PostsService } from "../posts.service";
 import { RequestWithBody, RequestWithParams, RequestWithParamsAndBody, RequestWithParamsAndQuery, RequestWithParamsBodyAndUserId, RequestWithQuery } from "../../shared/types/requests.types";
 import { IdType } from "../../shared/types/id.type";
+import { HttpStatuses } from "../../shared/types/httpStatuses";
+import { IPostView, PostInputModel, PostLikeInputModel } from "./posts.api.models";
+import { PostsQueryRepository } from "../infrastructure/postsQuery.repository";
+import { PostsService } from "../application/posts.service";
 import { CommentInputModel, ICommentView, CreateCommentDto, GetCommentsDto } from "../../comments/comments.types";
 import { CommentsService } from "../../comments/comments.service";
-import { HttpStatuses } from "../../shared/types/httpStatuses";
-import { GetPostCommentsSanitizedQuery, PostInputModel, IPostView } from "../posts.types";
 import { CommentsQueryRepository } from "../../comments/commentsQuery.repository";
 import { inject, injectable } from "inversify";
-import mongoose from "mongoose";
+import { createObjId } from "../../shared/sahred.utils";
+import { CreatePostDto, CreatePostLikeDto } from "../application/posts.dto";
+import { GetPostsDto } from "../infrastructure/postsQuery.models";
+import { CustomError } from "../../shared/types/error.types";
 
 @injectable()
 export class PostsController {
@@ -30,7 +33,15 @@ export class PostsController {
   async getAllPosts(req: RequestWithQuery<PagingQuery>, res: Response<PagedResponse<IPostView>>, next: NextFunction) {
     const paging = req.query as PagingFilter;
     try {
-      const postsView = await this.postsQueryRepo.getAllPosts({ pagination: paging })
+      let dto: GetPostsDto = {
+        pagination: paging,
+      }
+      if (req.user?.id) {
+        dto.userId = createObjId(req.user.id);
+      }
+      const postsView = await this.postsQueryRepo.getAllPosts(
+        dto
+      )
       res.status(200).send(postsView)
       return;
     } catch (err) {
@@ -39,8 +50,24 @@ export class PostsController {
   }
 
   async createPost(req: RequestWithBody<PostInputModel>, res: Response<IPostView>, next: NextFunction) {
+    let blogId: ObjectId;
     try {
-      const postId = await this.postsService.createPost(req.body);
+      blogId = createObjId(req.body.blogId)
+    } catch (err) {
+      next(new CustomError('Invalid blogId', HttpStatuses.BadRequest, {
+        errorsMessages: [
+          { field: 'blogId', message: 'Invalid blogId' }
+        ]
+      })
+      )
+      return
+    }
+    try {
+      const createPostDto: CreatePostDto = {
+        ...req.body,
+        blogId: blogId
+      }
+      const postId = await this.postsService.createPost(createPostDto);
       const postView = await this.postsQueryRepo.findPostById(postId);
       res.status(201).send(postView)
       return
@@ -53,7 +80,14 @@ export class PostsController {
   async getPost(req: RequestWithParams<IdType>, res: Response<IPostView>, next: NextFunction) {
     try {
       const id = req.params.id as unknown as ObjectId
-      const post = await this.postsQueryRepo.findPostById(id);
+      let userId;
+      if (req.user?.id) {
+        userId = createObjId(req.user.id)
+      }
+      const post = await this.postsQueryRepo.findPostById(
+        id,
+        userId
+      );
       res.status(200).send(post)
     } catch (err) {
       next(err)
@@ -63,10 +97,31 @@ export class PostsController {
   async editPost(req: RequestWithParamsAndBody<IdType, PostInputModel>, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as unknown as ObjectId;
-      await this.postsService.editPost(id, req.body)
+      const createPostDto: CreatePostDto = {
+        ...req.body,
+        blogId: createObjId(req.body.blogId)
+      }
+      await this.postsService.editPost(id, createPostDto)
       res.sendStatus(204)
     } catch (err) {
       next(err)
+    }
+  }
+
+  async handlePostLike(req: RequestWithParamsBodyAndUserId<{ id: string }, PostLikeInputModel, { id: string }>, res: Response, next: NextFunction) {
+    const postId = req.params.id as unknown as ObjectId;
+    const userId = createObjId(req.user!.id);
+    const dto: CreatePostLikeDto = {
+      postId,
+      userId,
+      status: req.body.likeStatus
+    }
+    try {
+      await this.postsService.handlePostLike(dto);
+      res.sendStatus(HttpStatuses.NoContent);
+      return
+    } catch (err) {
+      next(err);
     }
   }
 
@@ -101,13 +156,13 @@ export class PostsController {
 
   async getCommentsForPost(req: RequestWithParamsAndQuery<{ id: string }, PagingQuery>, res: Response<PagedResponse<ICommentView>>, next: NextFunction) {
     const postId = req.params.id as unknown as ObjectId;
-    const { ...pagination } = req.query as GetPostCommentsSanitizedQuery
+    const { ...pagination } = req.query as PagingFilter
     const dto: GetCommentsDto = {
       postId,
       paginator: pagination,
     }
     if (req.user?.id) {
-      const userId = new mongoose.Types.ObjectId(req.user.id)
+      const userId = createObjId(req.user.id)
       dto.userId = userId
     }
     try {

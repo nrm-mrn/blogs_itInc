@@ -3,7 +3,6 @@ import { CommentDto, createUsers, loginUser, PostDto, testingDtosCreator, testSe
 import { runDb } from "../../src/db/mongoDb";
 import { IBlogView } from "../../src/blogs/blogs.types";
 import { PagedResponse } from "../../src/shared/types/pagination.types";
-import { IPostView } from "../../src/posts/posts.types";
 import { CommentInputModel, ICommentView } from "../../src/comments/comments.types";
 import { IUserView } from "../../src/users/user.types";
 import { createApp } from "../../src/app";
@@ -11,12 +10,13 @@ import { agent } from "supertest";
 import TestAgent from "supertest/lib/agent";
 import { UserModel } from "../../src/users/user.entity";
 import { BlogModel } from "../../src/blogs/blog.entity";
-import { PostModel } from "../../src/posts/post.entity";
 import { CommentModel } from "../../src/comments/comment.entity";
 import mongoose from "mongoose";
-import { CommentLikeDocument, CommentLikeModel, LikeStatus } from "../../src/comments/commentLike.entity";
+import { CommentLikeModel, CommentLikeStatus } from "../../src/comments/commentLike.entity";
 import { HttpStatuses } from "../../src/shared/types/httpStatuses";
 import { ApiRequestService } from "../../src/security/apiRequest.service";
+import { IPostView } from "../../src/posts/api/posts.api.models";
+import { PostModel } from "../../src/posts/domain/post.entity";
 
 
 describe('comments e2e test', () => {
@@ -64,9 +64,6 @@ describe('comments e2e test', () => {
     const commentsPage: PagedResponse<ICommentView> = res.body
     expect(Array.isArray(commentsPage.items)).toBe(true);
     expect(commentsPage.items.length).toBe(0);
-    expect(commentsPage.items[0].likesInfo.dislikesCount).toEqual(0)
-    expect(commentsPage.items[0].likesInfo.likesCount).toEqual(0)
-    expect(commentsPage.items[0].likesInfo.myStatus).toEqual(LikeStatus.NONE)
     const invailPost = new mongoose.Types.ObjectId()
     await req.get(SETTINGS.PATHS.POSTS + `/${invailPost}/comments`).expect(404)
   })
@@ -247,7 +244,7 @@ describe('comments e2e test', () => {
       let like: ICommentView = res.body
       expect(like.likesInfo.likesCount).toEqual(1)
       expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.NONE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.NONE)
 
 
       //check like status with authenticated req
@@ -257,7 +254,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(1)
       expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.LIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.LIKE)
 
       //second user like status is unchanged
       let { accessToken: token2 } = await loginUser(req, { loginOrEmail: users[1].login, password: '12345678' });
@@ -267,7 +264,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(1)
       expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.NONE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.NONE)
 
       //like from second user
       await req
@@ -284,7 +281,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(2)
       expect(like.likesInfo.dislikesCount).toEqual(0)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.LIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.LIKE)
 
       //remove like from first user
       const validNoneBody = { likeStatus: 'None' }
@@ -301,7 +298,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.dislikesCount).toEqual(0)
       expect(like.likesInfo.likesCount).toEqual(1)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.NONE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.NONE)
 
       //dislike from second
       const validDislikeBody = { likeStatus: 'Dislike' }
@@ -318,7 +315,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(0)
       expect(like.likesInfo.dislikesCount).toEqual(1)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.DISLIKE)
     })
 
     it('Should change statuses with different users interactions', async () => {
@@ -343,7 +340,7 @@ describe('comments e2e test', () => {
       let like = res.body
       expect(like.likesInfo.likesCount).toEqual(0)
       expect(like.likesInfo.dislikesCount).toEqual(1)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.DISLIKE)
 
       //create a dislike by user2
       await req
@@ -359,7 +356,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(0)
       expect(like.likesInfo.dislikesCount).toEqual(2)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.DISLIKE)
 
       //create a like by user3
       await req
@@ -375,7 +372,7 @@ describe('comments e2e test', () => {
       like = res.body
       expect(like.likesInfo.likesCount).toEqual(1)
       expect(like.likesInfo.dislikesCount).toEqual(2)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.DISLIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.DISLIKE)
     })
 
     it('should not change like status with multiple requests', async () => {
@@ -400,7 +397,7 @@ describe('comments e2e test', () => {
       let like: ICommentView = res.body
       expect(like.likesInfo.likesCount).toEqual(1)
       expect(like.likesInfo.dislikesCount).toEqual(1)
-      expect(like.likesInfo.myStatus).toEqual(LikeStatus.LIKE)
+      expect(like.likesInfo.myStatus).toEqual(CommentLikeStatus.LIKE)
     })
 
     it('should delete likes when a comment is deleted', async () => {

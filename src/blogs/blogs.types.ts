@@ -12,6 +12,7 @@ export type GetBlogsQuery = {
 } & PagingQuery;
 
 export type GetBlogPostsDto = {
+  userId?: ObjectId;
   blogId: ObjectId;
   pagination: PagingFilter;
 }
@@ -35,4 +36,10 @@ export type BlogInputModel = {
   name: string;
   description: string;
   websiteUrl: string;
+}
+
+export type BlogPostInputModel = {
+  title: string;
+  shortDescription: string;
+  content: string;
 }

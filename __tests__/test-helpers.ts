@@ -1,20 +1,21 @@
 import { SETTINGS } from "../src/settings/settings";
 import { BlogInputModel, IBlogView } from "../src/blogs/blogs.types";
 import { BlogService } from "../src/blogs/blogs.service";
-import { PostInputModel, IPostView } from "../src/posts/posts.types";
-import { PostsService } from "../src/posts/posts.service";
+import { PostsService } from "../src/posts/application/posts.service";
 import { ObjectId } from "../src/shared/types/objectId.type";
 import { IUserView, UserInputModel } from "../src/users/user.types";
 import { User, UserModel } from "../src/users/user.entity";
 import { BlogQueryRepository } from "../src/blogs/blogsQuery.repository";
 import { container } from "../src/ioc";
-import { PostsQueryRepository } from "../src/posts/postsQuery.repository";
+import { PostsQueryRepository } from "../src/posts/infrastructure/postsQuery.repository";
 import { UserService } from "../src/users/users.service";
 import TestAgent from "supertest/lib/agent";
 import mongoose from "mongoose";
-import { CreateCommentDto, ICommentView } from "../src/comments/comments.types";
+import { ICommentView } from "../src/comments/comments.types";
 import { CommentsService } from "../src/comments/comments.service";
 import { CommentsQueryRepository } from "../src/comments/commentsQuery.repository";
+import { IPostView, PostInputModel } from "../src/posts/api/posts.api.models";
+import { CreatePostDto } from "../src/posts/application/posts.dto";
 
 export type UserDto = {
   login: string
@@ -208,7 +209,7 @@ export const testSeeder = {
     const postIds: Array<ObjectId> = [];
     const posts: Array<IPostView> = [];
     for (let i = 0; i < input.length; i++) {
-      const postInput: PostInputModel = { ...input[0], blogId: new mongoose.Types.ObjectId(input[0].blogId) }
+      const postInput: CreatePostDto = { ...input[0], blogId: new mongoose.Types.ObjectId(input[0].blogId) }
       const postId = await postService.createPost(postInput)
       postIds.push(postId)
     }

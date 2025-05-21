@@ -1,16 +1,17 @@
-import { ObjectId } from "../shared/types/objectId.type";
-import { PostUpdateDto } from "./posts.types";
+import { ObjectId } from "../../shared/types/objectId.type";
 import { injectable } from "inversify";
-import { PostDocument, PostModel } from "./post.entity";
-import { CustomError } from "../shared/types/error.types";
-import { HttpStatuses } from "../shared/types/httpStatuses";
+import { CustomError } from "../../shared/types/error.types";
+import { HttpStatuses } from "../../shared/types/httpStatuses";
+import { EditPostByBlog } from "../application/posts.dto";
+import { PostDocument, PostModel } from "../domain/post.entity";
+import { PostLikeDocument, PostLikeModel } from "../domain/postLike.entity";
 
 @injectable()
 export class PostsRepository {
 
-  async savePost(post: PostDocument): Promise<ObjectId> {
-    await post.save();
-    return post._id;
+  async saveDoc(doc: PostDocument | PostLikeDocument): Promise<ObjectId> {
+    await doc.save();
+    return doc._id;
   }
 
   async getPost(id: ObjectId): Promise<PostDocument> {
@@ -20,10 +21,11 @@ export class PostsRepository {
     return post
   }
 
-  async updatePostsByBlogId(blogId: ObjectId, input: Partial<PostUpdateDto>): Promise<void> {
+  async updatePostsByBlogId(input: EditPostByBlog): Promise<void> {
+    const { id: blogId, ...update } = input
     const res = await PostModel.updateMany({ "blogId": blogId }, {
       $set: {
-        ...input
+        ...update
       }
     })
     if (res.acknowledged) {
@@ -43,5 +45,13 @@ export class PostsRepository {
   async deletePost(post: PostDocument): Promise<boolean> {
     const res = await post.deleteOne()
     return res.acknowledged
+  }
+
+  async deleteLikesByPost(postId: ObjectId): Promise<void> {
+    const res = await PostLikeModel.deleteMany({ postId });
+    if (res.acknowledged) {
+      return
+    }
+    throw new Error('Failed to delete likes by post')
   }
 }

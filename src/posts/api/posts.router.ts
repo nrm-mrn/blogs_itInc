@@ -1,15 +1,15 @@
 import { Router } from "express"
-import { container } from "../ioc"
-import { PostsController } from "./api/posts"
-import { paginationQuerySanitizerChain } from "../shared/middlewares/shared.sanitizers";
-import { baseAuthGuard } from "../auth/guards/baseAuthGuard";
-import { postGetValidator, postInputValidator, postUpdateValidator } from "./api/middleware/posts.validators";
-import { inputValidationResultMiddleware } from "../shared/middlewares/validationResult.middleware";
-import { idToObjectId } from "../shared/shared.sanitizers";
-import { jwtGuard } from "../auth/guards/jwtGuard";
-import { paramObjectIdValidator } from "../shared/middlewares/shared.validators";
-import { commentContentValidator } from "../comments/api/middleware/comments.validators";
-import { jwtOptionalGuard } from "../auth/guards/jwtOptionalGuard";
+import { container } from "../../ioc"
+import { PostsController } from "./posts"
+import { paginationQuerySanitizerChain } from "../../shared/middlewares/shared.sanitizers";
+import { baseAuthGuard } from "../../auth/guards/baseAuthGuard";
+import { postGetValidator, postInputValidator, postLikeStatusValidator, postUpdateValidator } from "./middleware/posts.validators";
+import { inputValidationResultMiddleware } from "../../shared/middlewares/validationResult.middleware";
+import { idToObjectId } from "../../shared/shared.sanitizers";
+import { jwtGuard } from "../../auth/guards/jwtGuard";
+import { paramObjectIdValidator } from "../../shared/middlewares/shared.validators";
+import { commentContentValidator } from "../../comments/api/middleware/comments.validators";
+import { jwtOptionalGuard } from "../../auth/guards/jwtOptionalGuard";
 
 export const postsRouter = Router({})
 
@@ -30,6 +30,7 @@ postsRouter.post('/',
 postsRouter.get('/:id',
   postGetValidator,
   inputValidationResultMiddleware,
+  jwtOptionalGuard,
   idToObjectId,
   postsController.getPost.bind(postsController)
 )
@@ -40,6 +41,15 @@ postsRouter.put('/:id',
   inputValidationResultMiddleware,
   idToObjectId,
   postsController.editPost.bind(postsController)
+)
+
+postsRouter.put('/:id/like-status',
+  jwtGuard,
+  paramObjectIdValidator,
+  postLikeStatusValidator,
+  inputValidationResultMiddleware,
+  idToObjectId,
+  postsController.handlePostLike.bind(postsController)
 )
 
 postsRouter.delete('/:id',

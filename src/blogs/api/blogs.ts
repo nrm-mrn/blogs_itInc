@@ -2,15 +2,16 @@ import { NextFunction, Response } from "express";
 import { ObjectId } from "../../shared/types/objectId.type";
 import { BlogService } from "../blogs.service";
 import { BlogQueryRepository } from "../blogsQuery.repository";
-import { GetBlogsQuery, GetBlogsDto, GetBlogsSanitizedQuery, BlogInputModel, IBlogView, GetBlogPostsDto } from "../blogs.types";
+import { GetBlogsQuery, GetBlogsDto, GetBlogsSanitizedQuery, BlogInputModel, IBlogView, GetBlogPostsDto, BlogPostInputModel } from "../blogs.types";
 import { APIErrorResult } from "../../shared/types/error.types";
 import { PagedResponse, PagingFilter, PagingQuery } from "../../shared/types/pagination.types";
 import { RequestWithBody, RequestWithParams, RequestWithParamsAndBody, RequestWithParamsAndQuery, RequestWithQuery } from "../../shared/types/requests.types";
 import { IdType } from "../../shared/types/id.type";
-import { IPostView, BlogPostInputModel } from "../../posts/posts.types";
 import { HttpStatuses } from "../../shared/types/httpStatuses";
 import { inject } from "inversify";
-import { PostsQueryRepository } from "../../posts/postsQuery.repository";
+import { PostsQueryRepository } from "../../posts/infrastructure/postsQuery.repository";
+import { IPostView } from "../../posts/api/posts.api.models";
+import { createObjId } from "../../shared/sahred.utils";
 
 export class BlogsController {
   constructor(
@@ -70,6 +71,9 @@ export class BlogsController {
       const postsDto: GetBlogPostsDto = {
         blogId: req.params.id as unknown as ObjectId,
         pagination: req.query as PagingFilter,
+      }
+      if (req.user?.id) {
+        postsDto.userId = createObjId(req.user.id);
       }
       const posts = await this.blogQueryRepo.getBlogPosts(postsDto)
       res.status(200).send(posts)

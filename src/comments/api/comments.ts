@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { RequestWithParams, RequestWithParamsAndBody, RequestWithParamsAndUserId, RequestWithParamsBodyAndUserId } from "../../shared/types/requests.types";
+import { RequestWithParams, RequestWithParamsAndUserId, RequestWithParamsBodyAndUserId } from "../../shared/types/requests.types";
 import { CommentInputModel, ICommentView, DeleteCommentDto, UpdateCommentDto, LikeInputModel, LikeInputDto } from "../comments.types";
 import { ObjectId } from "../../shared/types/objectId.type";
 import { CommentsQueryRepository } from "../commentsQuery.repository";

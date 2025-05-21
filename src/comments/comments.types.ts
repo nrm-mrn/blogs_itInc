@@ -1,7 +1,7 @@
 import { ObjectId } from "../shared/types/objectId.type";
 import { PagingFilter } from "../shared/types/pagination.types";
 import { Comment, CommentatorInfo } from "./comment.entity";
-import { LikeStatus } from "./commentLike.entity";
+import { CommentLikeStatus } from "./commentLike.entity";
 
 export type CommentInputModel = {
   content: string;
@@ -10,7 +10,7 @@ export type CommentInputModel = {
 export interface ILikesInfoView {
   likesCount: number;
   dislikesCount: number;
-  myStatus: LikeStatus;
+  myStatus: CommentLikeStatus;
 }
 
 export interface ICommentView {
@@ -26,11 +26,11 @@ export interface ICommentDb extends Comment { }
 export type LikeInputDto = {
   userId: ObjectId,
   commentId: ObjectId,
-  status: LikeStatus
+  status: CommentLikeStatus
 }
 
 export type LikeInputModel = {
-  likeStatus: LikeStatus
+  likeStatus: CommentLikeStatus
 }
 
 export type CreateCommentDto = {

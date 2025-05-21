@@ -5,8 +5,8 @@ import { HttpStatuses } from "../shared/types/httpStatuses";
 import { PagedResponse } from "../shared/types/pagination.types";
 import { injectable } from "inversify";
 import { CommentModel } from "./comment.entity";
-import { PostModel } from "../posts/post.entity";
-import { CommentLikeModel, LikeStatus } from "./commentLike.entity";
+import { CommentLikeModel, CommentLikeStatus } from "./commentLike.entity";
+import { PostModel } from "../posts/domain/post.entity";
 
 @injectable()
 export class CommentsQueryRepository {
@@ -19,7 +19,7 @@ export class CommentsQueryRepository {
     let likesInfo: ILikesInfoView = {
       likesCount: comment.likesCount,
       dislikesCount: comment.dislikesCount,
-      myStatus: LikeStatus.NONE,
+      myStatus: CommentLikeStatus.NONE,
     }
     if (userId) {
       const like = await CommentLikeModel.findOne(
@@ -61,7 +61,7 @@ export class CommentsQueryRepository {
         const likesInfo: ILikesInfoView = {
           likesCount: comment.likesCount,
           dislikesCount: comment.dislikesCount,
-          myStatus: LikeStatus.NONE
+          myStatus: CommentLikeStatus.NONE
         }
         if (dto.userId) {
           const like = await CommentLikeModel.findOne({

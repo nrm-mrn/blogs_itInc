@@ -1,12 +1,14 @@
 import { ObjectId } from "../shared/types/objectId.type";
 import { GetBlogsDto, GetBlogPostsDto, IBlogView } from "./blogs.types";
 import { PagedResponse } from "../shared/types/pagination.types";
-import { IPostView } from "../posts/posts.types";
 import { injectable } from "inversify";
 import { CustomError } from "../shared/types/error.types";
 import { HttpStatuses } from "../shared/types/httpStatuses";
 import { BlogModel } from "./blog.entity";
-import { PostModel } from "../posts/post.entity";
+import { IPostView } from "../posts/api/posts.api.models";
+import { PostModel } from "../posts/domain/post.entity";
+import { PostLikeStatus } from "../posts/application/posts.dto";
+import { PostLikeModel } from "../posts/domain/postLike.entity";
 
 @injectable()
 export class BlogQueryRepository {
@@ -71,9 +73,30 @@ export class BlogQueryRepository {
         content: post.content,
         blogId: post.blogId.toString(),
         blogName: post.blogName,
-        createdAt: post.createdAt.toISOString()
+        createdAt: post.createdAt.toISOString(),
+        extendedLikesInfo: {
+          likesCount: post.likesCount,
+          dislikesCount: post.dislikesCount,
+          myStatus: PostLikeStatus.NONE,
+          newestLikes: post.newestLikes,
+        }
       }
     })
+    if (dto.userId) {
+      const postIds = posts.map(postDoc => postDoc._id);
+      const likes = await PostLikeModel.find(
+        {
+          "userInfo.userId": dto.userId,
+          postId: { $in: postIds }
+        }
+      )
+      postViews.forEach(post => {
+        const like = likes.find((like) => like.postId.toString() === post.id)
+        if (like) {
+          post.extendedLikesInfo.myStatus = like.status;
+        }
+      })
+    }
     return {
       pagesCount: Math.ceil(total / paging.pageSize),
       page: paging.pageNumber,

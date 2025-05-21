@@ -1,8 +1,7 @@
 import { ObjectId } from "../shared/types/objectId.type";
 import { BlogRepository } from "./blogs.repository";
-import { PostsService } from "../posts/posts.service";
-import { BlogPostInputModel } from "../posts/posts.types";
-import { BlogInputModel } from "./blogs.types";
+import { PostsService } from "../posts/application/posts.service";
+import { BlogInputModel, BlogPostInputModel } from "./blogs.types";
 import { BlogModel } from "./blog.entity";
 import { inject, injectable } from "inversify";
 
@@ -33,7 +32,9 @@ export class BlogService {
   async editBlog(id: ObjectId, input: BlogInputModel): Promise<void> {
     const blog = await this.blogRepository.getBlogById(id);
     if (blog.name !== input.name) {
-      await this.postsService.editPostsByBlogId(id, { blogName: input.name })
+      await this.postsService.editPostsByBlogId(
+        { id, blogName: input.name }
+      )
     }
     blog.name = input.name;
     blog.description = input.description;
